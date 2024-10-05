@@ -24,12 +24,12 @@ if (!defined("IN_MYBB")) {
 function activitytracker_info()
 {
   return array(
-    "name"      => "Activity Tracker 1.0",
-    "description"  => "Aktivitätstracker für RPGS - Blacklist / Eisliste / Whitelist in Kombination oder einzelnd.",
+    "name"      => "Activity Tracker",
+    "description"  => "Aktivitätstracker für RPGS - Blacklist / Characterstatus / Eisliste / Whitelist in Kombination oder einzelnd.",
     "website"    => "https://github.com/katjalennartz",
     "author"    => "risuena",
     "authorsite"  => "https://github.com/katjalennartz",
-    "version"    => "1.0",
+    "version"    => "1.0.0",
     "compatibility" => "*"
   );
 }
@@ -37,8 +37,233 @@ function activitytracker_info()
 function activitytracker_install()
 {
   global $db, $cache;
+
+  activitytracker_add_db();
+  activitytracker_add_settings("install");
+  activitytracker_add_templates();
+  /**
+   * Tasks Anlegen
+   */
+  //Task, der per Default einmal im Monat ausgeführt wird.
+  //TODO : Ändern wenn anders im ACP eingestellt wird 
+  $db->insert_query('tasks', array(
+    'title' => 'blacklist',
+    'description' => 'Stellt die Blacklist zusammen.',
+    'file' => 'activitytracker_blacklist',
+    'minute' => '1',
+    'hour' => '0',
+    'day' => '1',
+    'month' => '*',
+    'weekday' => '*',
+    'nextrun' => TIME_NOW + 60,
+    'lastrun' => 0,
+    'enabled' => 0,
+    'logging' => 1,
+    'locked' => 0,
+  ));
+
+  $db->insert_query('tasks', array(
+    'title' => 'Blacklist Autooff',
+    'description' => 'Deaktiviert/Versteckt die Blacklist wieder.',
+    'file' => 'activitytracker_blacklist_autooff',
+    'minute' => '1',
+    'hour' => '0',
+    'day' => '1',
+    'month' => '*',
+    'weekday' => '*',
+    'nextrun' => TIME_NOW + 60,
+    'lastrun' => 0,
+    'enabled' => 0,
+    'logging' => 1,
+    'locked' => 0,
+  ));
+
+  $db->insert_query('tasks', array(
+    'title' => 'Blacklist Benachrichtigung',
+    'description' => 'Benachrichtigt User per Mail oder PN wenn sie auf der Blacklist stehen',
+    'file' => 'activitytracker_blacklist_alert',
+    'minute' => '1',
+    'hour' => '0',
+    'day' => '1',
+    'month' => '*',
+    'weekday' => '*',
+    'nextrun' => TIME_NOW + 60,
+    'lastrun' => 0,
+    'enabled' => 0,
+    'logging' => 1,
+    'locked' => 0,
+  ));
+
+
+  $db->insert_query('tasks', array(
+    'title' => 'Whitelist',
+    'description' => 'Stellt die Whitelist zusammen.',
+    'file' => 'activitytracker_whitelist',
+    'minute' => '1',
+    'hour' => '0',
+    'day' => '1',
+    'month' => '*',
+    'weekday' => '*',
+    'nextrun' => TIME_NOW + 60,
+    'lastrun' => 0,
+    'enabled' => 0,
+    'logging' => 1,
+    'locked' => 0,
+  ));
+
+  $db->insert_query('tasks', array(
+    'title' => 'Whitelist Autooff',
+    'description' => 'Deaktiviert/Versteckt die Whitelist wieder.',
+    'file' => 'activitytracker_whitelist_autooff',
+    'minute' => '1',
+    'hour' => '0',
+    'day' => '1',
+    'month' => '*',
+    'weekday' => '*',
+    'nextrun' => TIME_NOW + 60,
+    'lastrun' => 0,
+    'enabled' => 0,
+    'logging' => 1,
+    'locked' => 0,
+  ));
+
+  $db->insert_query('tasks', array(
+    'title' => 'Eisliste',
+    'description' => 'Überprüft die Eisliste und trägt Charaktere eventuell aus.',
+    'file' => 'activitytracker_icelist',
+    'minute' => '1',
+    'hour' => '0',
+    'day' => '1',
+    'month' => '*',
+    'weekday' => '*',
+    'nextrun' => TIME_NOW + 60,
+    'lastrun' => 0,
+    'enabled' => 0,
+    'logging' => 1,
+    'locked' => 0,
+  ));
+  $cache->update_tasks();
+}
+
+//überprüft ob das Plugin in installiert ist
+function activitytracker_is_installed()
+{
+  global $db;
+  if ($db->table_exists("at_blacklist")) {
+    return true;
+  }
+  return false;
+}
+
+//Deinstallation des Plugins
+function activitytracker_uninstall()
+{
+  global $db, $cache;
+  //nur felder löschen, die existieren
+
+  if ($db->table_exists("at_blacklist")) {
+    $db->drop_table("at_blacklist");
+  }
+  if ($db->table_exists("at_whitelist")) {
+    $db->drop_table("at_whitelist");
+  }
+  if ($db->table_exists("at_icelist")) {
+    $db->drop_table("at_icelist");
+  }
+  if ($db->table_exists("at_scenereminder")) {
+    $db->drop_table("at_scenereminder");
+  }
+  //templates entfernen
+  $db->delete_query("templates", "title LIKE 'activitytracker_%'");
+  // Einstellungen entfernen
+  $db->delete_query('settinggroups', "name = 'activitytracker'");
+  $db->delete_query('settings', "name like 'activitytracker%'");
+
+  rebuild_settings();
+
+  // Tasks löschen
+  $db->delete_query("tasks", "file='activitytracker%'");
+  $cache->update_tasks();
+
+  if ($db->field_exists("activitytracker_bl_view", "users")) {
+    $db->query("ALTER TABLE " . TABLE_PREFIX . "users DROP activitytracker_bl_view_warning");
+  }
+  if ($db->field_exists("activitytracker_bl_view", "users")) {
+    $db->query("ALTER TABLE " . TABLE_PREFIX . "users DROP activitytracker_bl_view_info");
+  }
+  if ($db->field_exists("activitytracker_bl_ice", "users")) {
+    $db->write_query("ALTER TABLE " . TABLE_PREFIX . "users DROP activitytracker_bl_ice");
+  }
+  if ($db->field_exists("activitytracker_bl_ice_date", "users")) {
+    $db->write_query("ALTER TABLE " . TABLE_PREFIX . "users DROP activitytracker_bl_ice_date");
+  }
+}
+
+//Plugin Aktivieren
+function activitytracker_activate()
+{
+  global $db;
+
+  include  MYBB_ROOT . "/inc/adminfunctions_templates.php";
+  find_replace_templatesets("index", "#" . preg_quote('{$header}') . "#i", '{$header}{$blacklist_index}');
+  //einfügen im profil
+  find_replace_templatesets("usercp", "#" . preg_quote('{$latest_subscribed}') . "#i", '{$blacklist_ucp}{$latest_subscribed}');
+  find_replace_templatesets("usercp_profile", "#" . preg_quote('{$contactfields}') . "#i", '{$contactfields}{$blacklist_ucp_edit}');
+
+  //enable task
+  $db->update_query('tasks', array('enabled' => 1), "file = 'blacklist'");
+  //TODO: enable the other tasks
+}
+
+function activitytracker_deactivate()
+{
+  global $db;
+  include  MYBB_ROOT . "/inc/adminfunctions_templates.php";
+  find_replace_templatesets("index", "#" . preg_quote('{$blacklist_index}') . "#i", '');
+  //im profil noch entfernen
+  find_replace_templatesets("usercp", "#" . preg_quote('{$blacklist_ucp}') . "#i", '');
+  // find_replace_templatesets("usercp_profile", "#" . preg_quote('{$blacklist_ucp_ice}') . "#i", '');
+
+  // Disable the task
+  $db->update_query('tasks', array('enabled' => 0), "file = 'blacklist'");
+}
+
+//ADMIN CP STUFF
+$plugins->add_hook("admin_config_settings_change", "activitytracker_settings_change");
+// Set peeker in ACP
+function activitytracker_settings_change()
+{
+  global $db, $mybb, $activitytracker_settings_peeker;
+
+  $result = $db->simple_select("settinggroups", "gid", "name='activitytracker'", array("limit" => 1));
+  $group = $db->fetch_array($result);
+  $activitytracker_settings_peeker = ($mybb->input['gid'] == $group['gid']) && ($mybb->request_method != 'post');
+}
+
+$plugins->add_hook("admin_settings_print_peekers", "activitytracker_settings_peek");
+// Add peeker in ACP
+function activitytracker_settings_peek(&$peekers)
+{
+  global $activitytracker_settings_peeker;
+
+  if ($activitytracker_settings_peeker) {
+    //Weitere Einstellungen im ACP anzeigen, je nach auswahl
+    $peekers[] = 'new Peeker($(".activitytracker_bl_ingamestart"), $("#activitytracker_bl_ingamestart_days"),/1/,true)';
+    $peekers[] = 'new Peeker($(".activitytracker_bl_noaway"), $("#activitytracker_bl_noaway_days"),/1/,true)';
+
+    $peekers[] = 'new Peeker($(".activitytracker_bl_ice"), $("#activitytracker_bl_iceduration"),/1/,true)';
+    $peekers[] = 'new Peeker($(".activitytracker_bl_ice"), $("#activitytracker_bl_icelock"),/1/,true)';
+    $peekers[] = 'new Peeker($(".activitytracker_bl_icelock"), $("#activitytracker_bl_icelock_days"),/1/,true)';
+    $peekers[] = 'new Peeker($(".activitytracker_bl_ice"), $("#activitytracker_bl_icenumber"),/1/,true)';
+  }
+}
+
+function activitytracker_add_db()
+{
+  global $db;
   //Tabellen erstellen - für Blacklist
-  $db->write_query("CREATE TABLE `" . TABLE_PREFIX . "at_blacklist` (
+  if (!$db->table_exists("at_blacklist")) {
+    $db->write_query("CREATE TABLE `" . TABLE_PREFIX . "at_blacklist` (
     `blid` int(10) NOT NULL AUTO_INCREMENT,
     `uid` int(10) NOT NULL DEFAULT 0,
     `reason` varchar(500) DEFAULT '',
@@ -51,34 +276,56 @@ function activitytracker_install()
     `awaydate_last` datetime NOT NULL,
     PRIMARY KEY (`blid`)
     ) ENGINE=MyISAM CHARACTER SET utf8 COLLATE utf8_general_ci;");
-
+  }
   //Tabelle erstellen - für Whitelist
-  $db->write_query("CREATE TABLE `" . TABLE_PREFIX . "at_whitelist` (
+  if (!$db->table_exists("at_whitelist")) {
+    $db->write_query("CREATE TABLE `" . TABLE_PREFIX . "at_whitelist` (
       `wlid` int(10) NOT NULL AUTO_INCREMENT,
       `uid` int(10) NOT NULL,
       `username` varchar(50) NOT NULL DEFAULT '',
       `reported_back` int(0) NOT NULL DEFAULT 0,
       PRIMARY KEY (`wlid`)
       ) ENGINE=MyISAM CHARACTER SET utf8 COLLATE utf8_general_ci;");
-
+  }
   //Tabelle erstellen - für Eislise
-  $db->write_query("CREATE TABLE `" . TABLE_PREFIX . "at_icelist` (
+  if (!$db->table_exists("at_icelist")) {
+    $db->write_query("CREATE TABLE `" . TABLE_PREFIX . "at_icelist` (
     `ilid` int(10) NOT NULL AUTO_INCREMENT,
     `uid` int(10) NOT NULL,
     `icedate` datetime,
     PRIMARY KEY (`ilid`)
     ) ENGINE=MyISAM CHARACTER SET utf8 COLLATE utf8_general_ci;");
+  }
 
+  //Tabelle erstellen - für Reminder
+  if (!$db->table_exists("at_scenereminder")) {
+    $db->write_query("CREATE TABLE `" . TABLE_PREFIX . "at_scenereminder` (
+      `srid` int(10) NOT NULL AUTO_INCREMENT,
+      `uid` int(10) NOT NULL,
+      `tid` datetime,
+      `ignore` int(10),
+      PRIMARY KEY (`srid`)
+      ) ENGINE=MyISAM CHARACTER SET utf8 COLLATE utf8_general_ci;");
+  }
+}
 
-  //Einstellungs Gruppe
-  $setting_group = array(
-    'name' => 'activitytracker',
-    'title' => 'Activity Tracker',
-    'description' => 'Einstellungen für den Activity Tracker',
-    'disporder' => 6, // The order your setting group will display
-    'isdefault' => 0
-  );
-  $gid = $db->insert_query("settinggroups", $setting_group);
+function activitytracker_add_settings($type = "install")
+{
+  global $db;
+  if ($type == "install") {
+    //Einstellungs Gruppe anlegen
+    $setting_group = array(
+      'name' => 'activitytracker',
+      'title' => 'Activity Tracker',
+      'description' => 'Einstellungen für den Activity Tracker',
+      'disporder' => 6, // The order your setting group will display
+      'isdefault' => 0
+    );
+    $gid = $db->insert_query("settinggroups", $setting_group);
+  } else {
+    //update, keine Installation, Gruppe ist also schonv vorhanden
+    $gid = $db->fetch_field($db->simple_select("settinggroups", "gid", "name = 'activitytracker'"), "gid");
+  }
 
   //einstellungen 
   $setting_array = array(
@@ -174,6 +421,16 @@ function activitytracker_install()
       'disporder' => 8
     ),
     //Typ der Berücksichtigung
+    'activitytracker_bl_type_user' => array(
+      'title' => 'Blacklist - Spieler oder Charakter?',
+      'description' => 'Soll die Blacklist nach Spieler oder Charakter unterschieden werden?',
+      'optionscode' => 'radio
+          player=Spieler
+          character=Character',
+      'value' => 'character', // Default
+      'disporder' => 9
+    ),
+    //Typ der Berücksichtigung
     'activitytracker_bl_type' => array(
       'title' => 'Blacklist - Berücksichtigungsart',
       'description' => 'Soll nur der allgemein letzte Post im Ingame des Charakters gezählt werden, oder gilt der erlaubte Zeitraum pro Szene?',
@@ -181,23 +438,23 @@ function activitytracker_install()
       scene=pro Szene
       lastingame= letzter Post Ingame',
       'value' => 'scene', // Default
-      'disporder' => 9
+      'disporder' => 10
     ),
     //Keine Aktuelle Ingameszene
     'activitytracker_bl_noscenes' => array(
       'title' => 'Blacklist - Keine aktuelle Ingameszene',
-      'description' => 'Soll es gesondert behandelt werden, wenn der Charakter gerade keine aktuelle Ingame Szene hat?',
+      'description' => 'Soll es gesondert behandelt werden, wenn der Charakter gerade keine aktuelle Ingame Szene hat? Wenn Nein, landet der Charakter entsprechend nicht auf der BL.',
       'optionscode' => 'yesno',
       'value' => '1', // Default
-      'disporder' => 10
+      'disporder' => 11
     ),
     //Keine aktuelle Ingameszene Zeitraum
     'activitytracker_bl_noscenes_days' => array(
       'title' => 'Blacklist - Keine aktuelle Ingameszene - Zeitraum',
-      'description' => 'Wieviele Tage hat ein Charakter Zeit eine neue Szene im Ingamezeitraum zu öffnen?',
+      'description' => 'Wieviele Tage hat ein Charakter Zeit eine neue Szene im Ingamezeitraum zu öffnen bevor er auf der Blacklist landet?',
       'optionscode' => 'numeric',
       'value' => '1', // Default
-      'disporder' => 11
+      'disporder' => 12
     ),
     //Zeitraum für Steckbriefe
     'activitytracker_bl_applicationduration' => array(
@@ -205,7 +462,7 @@ function activitytracker_install()
       'description' => 'Wieviel Zeit(Tage) haben Bewerber einen Steckbrief zu posten?',
       'optionscode' => 'numeric',
       'value' => '21', // Default
-      'disporder' => 12
+      'disporder' => 13
     ),
     //Die fid (forenid) der Bewerbungsarea
     'activitytracker_bl_bewerberfid' => array(
@@ -213,14 +470,15 @@ function activitytracker_install()
       'description' => 'In welches Forum posten eure Bewerber die Steckbriefe?',
       'optionscode' => 'forumselect',
       'value' => '16', // Default
-      'disporder' => 13
+      'disporder' => 14
     ),
     //Die fid (forenid) der Bewerbungsarea
     'activitytracker_bl_ingamestart' => array(
       'title' => 'Blacklist - Ingameeinstieg',
       'description' => 'Soll der Ingameeinstieg eine gesonderte Frist haben?',
+      'optionscode' => 'yesno',
       'value' => '1', // Default
-      'disporder' => 14
+      'disporder' => 15
     ),
     //TODO vergleich mit registrierungsdatum //wobdate risus //stecki in area
     //TODO wenn steck in area ausgewaählt fid
@@ -230,7 +488,27 @@ function activitytracker_install()
       'description' => 'Wieviele Tage soll ein frisch angenommener Charakter haben einzusteigen?',
       'optionscode' => 'numeric',
       'value' => '14', // Default
-      'disporder' => 15
+      'disporder' => 16
+    ),
+    //Wie soll das wob date zugeordnet werden
+    'activitytracker_bl_wobdate' => array(
+      'title' => 'Blacklist - Berechnung WoB Date.',
+      'description' => 'Wie soll das Datum des WoBs ermittelt werden?',
+      "optionscode" => "radio
+      reg=Registrierungsdatum
+      risu_reg=WoB Risuenas Steckbriefplugin
+      thread=Erstellung eines Threads (z.B. Steckbriefarea)
+      ales_wob=WoB Bewerberchecklist von Ales",
+      'value' => 'reg', // Default
+      'disporder' => 17
+    ),
+    //Wenn Thread -> Welche Area
+    'activitytracker_bl_wobdate_thread' => array(
+      'title' => 'Blacklist - Berechnung WoB Date.',
+      'description' => 'Wenn du Threads ausgewählt hast, in welchem Forum werden diese gepostet. Elternforum reicht.',
+      "optionscode" => "forumselect",
+      'value' => '0', // Default
+      'disporder' => 18
     ),
     //Abwesenheit ja oder nein?
     'activitytracker_bl_away' => array(
@@ -238,7 +516,7 @@ function activitytracker_install()
       'description' => 'Soll beachtet werden, dass ein User abwesend gemeldet ist und er dann nicht auf die BL kommen?',
       "optionscode" => "yesno",
       'value' => '1', // Default
-      'disporder' => 18
+      'disporder' => 19
     ),
     //3 Monatsregel?
     'activitytracker_bl_noaway' => array(
@@ -246,15 +524,15 @@ function activitytracker_install()
       'description' => 'Gibt es einen Zeitraum, bei dem der Charakter auf die BL kommt, auch wenn er abwesend ist?',
       "optionscode" => "yesno",
       'value' => '1', // Default
-      'disporder' => 19
+      'disporder' => 20
     ),
     //3 Monatsregel - Zeitraum?
     'activitytracker_bl_noaway_days' => array(
       'title' => 'Blacklist - Sonderregel - Zeitraum?',
-      'description' => 'Nach wievielen Tagen soll die Abwesenheit nicht mehr als Schutz gelten?',
+      'description' => 'Nach wievielen Tagen soll die Abwesenheit nicht mehr als Schutz gelten? 0 Wenn es keine Begrenzung gibt.',
       "optionscode" => "numeric",
       'value' => '91', // Default
-      'disporder' => 20
+      'disporder' => 21
     ),
     //Der Charakter würde am ausgewählten Tag auf der Blacklist stehen
     'activitytracker_bl_reminder' => array(
@@ -292,10 +570,6 @@ function activitytracker_install()
       'value' => 'mail', // Default
       'disporder' => 23
     ),
-    //TODO Benachrichtigung von Usern die auf der BL stehen 
-    //automatisch 
-    //per button
-    //gar nicht
     //Streichen lassen
     'activitytracker_bl_reminder_stroke' => array(
       'title' => 'Blacklist - Streichen',
@@ -308,7 +582,7 @@ function activitytracker_install()
     'activitytracker_bl_reminder_stroke_count' => array(
       'title' => 'Blacklist - Streichen Anzahl',
       'description' => 'Wir oft dürfen User ihren Charakter streichen? 0 für Unbegrenzt.',
-      "optionscode" => "1",
+      "optionscode" => "numeric",
       'value' => '1', // Default
       'disporder' => 25
     ),
@@ -319,7 +593,8 @@ function activitytracker_install()
       "optionscode" => "radio
       risu=Risuenas
       spark2=Sparkflys 2.0
-      spark3=Sparkflys 3.0",
+      spark3=Sparkflys 3.0
+      ales=Ales 2.0",
       'value' => '1', // Default
       'disporder' => 26
     ),
@@ -477,14 +752,6 @@ function activitytracker_install()
       'value' => '1', // Default
       'disporder' => 43
     ),
-    //Wieviele Charaktere darf ein User auf Eis legen?
-    'activitytracker_ice_number' => array(
-      'title' => 'Eisliste - Anzahl',
-      'description' => 'Wieviele Charaktere darf ein User auf Eis legen? z.B 2 für 2 Charaktere oder 50 für 50%',
-      "optionscode" => "text",
-      'value' => '0', // Default
-      'disporder' => 44
-    ),
     /*Allgemein benutzergruppen*/
     //Gruppen für normale Blacklistregeln
     'activitytracker_groups' => array(
@@ -492,7 +759,7 @@ function activitytracker_install()
       'description' => 'Welche Gruppen sollen für die Blacklist/Whitelist/Eisliste berücksichtigt werden?',
       'optionscode' => 'groupselect',
       'value' => '1', // Default
-      'disporder' => 45
+      'disporder' => 44
     ),
     //Bewerbergruppe
     'activitytracker_applicationgroup' => array(
@@ -500,6 +767,14 @@ function activitytracker_install()
       'description' => 'Wähle die Gruppe für eure Bewerber aus.',
       'optionscode' => 'groupselect',
       'value' => '2', // Default
+      'disporder' => 45
+    ),
+    //ausgeschlossene User z.B. Gastaccount / Admint
+    'activitytracker_excludeduid' => array(
+      'title' => 'Ausgeschlossene User',
+      'description' => 'Gibt es user, die nicht berücksichtigt werden sollen? Z.B. Adminaccount / Gastaccount. Kommagetrennte Liste',
+      'optionscode' => 'text',
+      'value' => '0', // Default
       'disporder' => 46
     ),
     //IDs fürs Ingame?
@@ -526,14 +801,69 @@ function activitytracker_install()
       'value' => '4', // Default
       'disporder' => 48
     ),
+    //ausgeschlossene Foren
+    'activitytracker_scenereminder' => array(
+      'title' => 'Szenenerinnerung',
+      'description' => 'Soll der User erinnert werden, wenn er andere X Tage warten lässt? ',
+      'optionscode' => 'yesno',
+      'value' => '1', // Default
+      'disporder' => 49
+    ),
+    //ausgeschlossene Foren
+    'activitytracker_scenereminder_days' => array(
+      'title' => 'Szenenerinnerung Tage',
+      'description' => 'Nach wievielen Tagen soll man erinnert werden? ',
+      'optionscode' => 'numeric',
+      'value' => '0', // Default
+      'disporder' => 50
+    ),
   );
 
-  foreach ($setting_array as $name => $setting) {
-    $setting['name'] = $name;
-    $setting['gid'] = $gid;
-    $db->insert_query('settings', $setting);
+  if ($type == "install") {
+    foreach ($setting_array as $name => $setting) {
+      $setting['name'] = $name;
+      $setting['gid'] = $gid;
+      $db->insert_query('settings', $setting);
+    }
+  } else {
+    //array mit settings durchgehen
+    foreach ($setting_array as $name => $setting) {
+      $setting['name'] = $name;
+      $setting['gid'] = $gid;
+
+      //alte einstellung aus der db holen
+      $check = $db->write_query("SELECT * FROM `" . TABLE_PREFIX . "settings` WHERE name = '{$name}'");
+      $check2 = $db->write_query("SELECT * FROM `" . TABLE_PREFIX . "settings` WHERE name = '{$name}'");
+
+      $check = $db->num_rows($check);
+      //noch gar nicht vorhanden, also hinzufügen
+      if ($check == 0) {
+        $db->insert_query('settings', $setting);
+        echo "Setting: {$name} wurde hinzugefügt.<br>";
+      } else {
+        //die einstellung gibt es schon, wir testen ob etwas verändert wurde
+        while ($setting_old = $db->fetch_array($check2)) {
+          if (
+            $setting_old['title'] != $setting['title'] ||
+            $setting_old['description'] != $setting['description'] ||
+            $setting_old['optionscode'] != $setting['optionscode'] ||
+            $setting_old['value'] != $setting['value'] ||
+            $setting_old['disporder'] != $setting['disporder']
+          ) {
+            $db->update_query('settings', $setting, "name='{$name}'");
+            echo "Setting: {$name} wurde aktualisiert.<br>";
+          }
+        }
+      }
+    }
+    echo "<p>Einstellungen wurden aktualisiert</p>";
   }
   rebuild_settings();
+}
+
+function activitytracker_add_templates($type = "install")
+{
+  global $db;
 
   $templategrouparray = array(
     'prefix' => 'activitytracker',
@@ -546,11 +876,38 @@ function activitytracker_install()
   $insert_array = array(
     'title'    => 'activitytracker_bl_show_main',
     'template'  => $db->escape_string('
-        activitytracker_bl Übersicht
+        <head>
+        <title>Blacklist</title>
+        {$headerinclude}
+        </head>
+        <body>
+        {$header}
+        <table width="100%" border="0" align="center">
+        <tr>
+        {$usercpnav}
+        <td valign="top">
+        <table border="0" cellspacing="{$theme[\'borderwidth\']}" cellpadding="{$theme[\'tablespace\']}" class="tborder">
+        <tr>
+        <td class="thead" colspan="2"><strong>Blacklist</strong></td>
+        </tr>
+        <tr>
+        <td class="trow2">
+            <div class="at-blacklist">
+              {$activitytracker_bl_show_main_userbit}         
+            </div>
+        </td>
+        </tr>
+        </table>
+        </td>
+        </tr>
+        </table>
+        {$footer}
+        </body>
+        </html>   
 
     '),
     'sid'    => '-2',
-    'version'  => '',
+    'version'  => '0',
     'dateline'  => TIME_NOW
   );
   $db->insert_query("templates", $insert_array);
@@ -559,10 +916,31 @@ function activitytracker_install()
   $insert_array = array(
     'title'    => 'activitytracker_bl_show_main_userbit',
     'template'  => $db->escape_string('
-        Ausgabe Userbit
+        <div class="at-blacklist__user">
+          {$activitytracker_bl_show_main_charabit}         
+        </div>
       '),
     'sid'    => '-2',
-    'version'  => '',
+    'version'  => '0',
+    'dateline'  => TIME_NOW
+  );
+  $db->insert_query("templates", $insert_array);
+
+  //templates anlegen
+  $insert_array = array(
+    'title'    => 'activitytracker_bl_show_main_charabit',
+    'template'  => $db->escape_string('
+        <div class="at-blacklist__chara">
+          <div class="at-blacklist__charaname">
+          </div>
+          <div class="at-blacklist__charareason">
+          </div>
+          <div class="at-blacklist__charaoptions">
+          </div> 
+        </div>
+        '),
+    'sid'    => '-2',
+    'version'  => '0',
     'dateline'  => TIME_NOW
   );
   $db->insert_query("templates", $insert_array);
@@ -574,10 +952,9 @@ function activitytracker_install()
          Übersicht - User 
          Am nächsten X. erscheint die BL - folgende Charas würden drauf stehen
          Übersicht Charas auf Eis 
-
       '),
     'sid'    => '-2',
-    'version'  => '',
+    'version'  => '0',
     'dateline'  => TIME_NOW
   );
   $db->insert_query("templates", $insert_array);
@@ -590,7 +967,7 @@ function activitytracker_install()
            
         '),
     'sid'    => '-2',
-    'version'  => '',
+    'version'  => '0',
     'dateline'  => TIME_NOW
   );
   $db->insert_query("templates", $insert_array);
@@ -603,7 +980,7 @@ function activitytracker_install()
            
         '),
     'sid'    => '-2',
-    'version'  => '',
+    'version'  => '0',
     'dateline'  => TIME_NOW
   );
   $db->insert_query("templates", $insert_array);
@@ -615,221 +992,10 @@ function activitytracker_install()
              
           '),
     'sid'    => '-2',
-    'version'  => '',
+    'version'  => '0',
     'dateline'  => TIME_NOW
   );
   $db->insert_query("templates", $insert_array);
-
-  /**
-   * Tasks Anlegen
-   */
-  //Task, der per Default einmal im Monat ausgeführt wird.
-  //TODO : Ändern wenn anders im ACP eingestellt wird 
-  $db->insert_query('tasks', array(
-    'title' => 'blacklist',
-    'description' => 'Stellt die Blacklist zusammen.',
-    'file' => 'activitytracker_blacklist',
-    'minute' => '1',
-    'hour' => '0',
-    'day' => '1',
-    'month' => '*',
-    'weekday' => '*',
-    'nextrun' => TIME_NOW + 60,
-    'lastrun' => 0,
-    'enabled' => 0,
-    'logging' => 1,
-    'locked' => 0,
-  ));
-
-  $db->insert_query('tasks', array(
-    'title' => 'Blacklist Autooff',
-    'description' => 'Deaktiviert/Versteckt die Blacklist wieder.',
-    'file' => 'activitytracker_blacklist_autooff',
-    'minute' => '1',
-    'hour' => '0',
-    'day' => '1',
-    'month' => '*',
-    'weekday' => '*',
-    'nextrun' => TIME_NOW + 60,
-    'lastrun' => 0,
-    'enabled' => 0,
-    'logging' => 1,
-    'locked' => 0,
-  ));
-
-  $db->insert_query('tasks', array(
-    'title' => 'Blacklist Benachrichtigung',
-    'description' => 'Benachrichtigt User per Mail oder PN wenn sie auf der Blacklist stehen',
-    'file' => 'activitytracker_blacklist_alert',
-    'minute' => '1',
-    'hour' => '0',
-    'day' => '1',
-    'month' => '*',
-    'weekday' => '*',
-    'nextrun' => TIME_NOW + 60,
-    'lastrun' => 0,
-    'enabled' => 0,
-    'logging' => 1,
-    'locked' => 0,
-  ));
-
-
-  $db->insert_query('tasks', array(
-    'title' => 'Whitelist',
-    'description' => 'Stellt die Whitelist zusammen.',
-    'file' => 'activitytracker_whitelist',
-    'minute' => '1',
-    'hour' => '0',
-    'day' => '1',
-    'month' => '*',
-    'weekday' => '*',
-    'nextrun' => TIME_NOW + 60,
-    'lastrun' => 0,
-    'enabled' => 0,
-    'logging' => 1,
-    'locked' => 0,
-  ));
-
-  $db->insert_query('tasks', array(
-    'title' => 'Whitelist Autooff',
-    'description' => 'Deaktiviert/Versteckt die Whitelist wieder.',
-    'file' => 'activitytracker_whitelist_autooff',
-    'minute' => '1',
-    'hour' => '0',
-    'day' => '1',
-    'month' => '*',
-    'weekday' => '*',
-    'nextrun' => TIME_NOW + 60,
-    'lastrun' => 0,
-    'enabled' => 0,
-    'logging' => 1,
-    'locked' => 0,
-  ));
-
-  $db->insert_query('tasks', array(
-    'title' => 'Eisliste',
-    'description' => 'Überprüft die Eisliste und trägt Charaktere eventuell aus.',
-    'file' => 'activitytracker_icelist',
-    'minute' => '1',
-    'hour' => '0',
-    'day' => '1',
-    'month' => '*',
-    'weekday' => '*',
-    'nextrun' => TIME_NOW + 60,
-    'lastrun' => 0,
-    'enabled' => 0,
-    'logging' => 1,
-    'locked' => 0,
-  ));
-  $cache->update_tasks();
-}
-
-//überprüft ob das Plugin in installiert ist
-function activitytracker_is_installed()
-{
-  global $db;
-  if ($db->table_exists("at_blacklist")) {
-    return true;
-  }
-  return false;
-}
-
-//Deinstallation des Plugins
-function activitytracker_uninstall()
-{
-  global $db, $cache;
-  //nur felder löschen, die existieren
-
-  if ($db->table_exists("at_blacklist")) {
-    $db->drop_table("at_blacklist");
-  }
-  if ($db->table_exists("at_whitelist")) {
-    $db->drop_table("at_whitelist");
-  }
-  if ($db->table_exists("at_icelist")) {
-    $db->drop_table("at_icelist");
-  }
-  // Einstellungen entfernen
-  $db->delete_query("templates", "title LIKE 'activitytracker_%'");
-  $db->delete_query('settinggroups', "name = 'activitytracker'");
-  //templates noch entfernen
-  rebuild_settings();
-
-  // Tasks löschen
-  $db->delete_query("tasks", "file='activitytracker%'");
-  $cache->update_tasks();
-
-  if ($db->field_exists("activitytracker_bl_view", "users")) {
-    $db->query("ALTER TABLE " . TABLE_PREFIX . "users DROP activitytracker_bl_view_warning");
-  }
-  if ($db->field_exists("activitytracker_bl_view", "users")) {
-    $db->query("ALTER TABLE " . TABLE_PREFIX . "users DROP activitytracker_bl_view_info");
-  }
-  if ($db->field_exists("activitytracker_bl_ice", "users")) {
-    $db->write_query("ALTER TABLE " . TABLE_PREFIX . "users DROP activitytracker_bl_ice");
-  }
-  if ($db->field_exists("activitytracker_bl_ice_date", "users")) {
-    $db->write_query("ALTER TABLE " . TABLE_PREFIX . "users DROP activitytracker_bl_ice_date");
-  }
-}
-
-//Plugin Aktivieren
-function activitytracker_activate()
-{
-  global $db;
-
-  include  MYBB_ROOT . "/inc/adminfunctions_templates.php";
-  find_replace_templatesets("index", "#" . preg_quote('{$header}') . "#i", '{$header}{$blacklist_index}');
-  //einfügen im profil
-  find_replace_templatesets("usercp", "#" . preg_quote('{$latest_subscribed}') . "#i", '{$blacklist_ucp}{$latest_subscribed}');
-  find_replace_templatesets("usercp_profile", "#" . preg_quote('{$contactfields}') . "#i", '{$contactfields}{$blacklist_ucp_edit}');
-
-  //enable task
-  $db->update_query('tasks', array('enabled' => 1), "file = 'blacklist'");
-  //TODO: enable the other tasks
-}
-
-function activitytracker_deactivate()
-{
-  global $db;
-  include  MYBB_ROOT . "/inc/adminfunctions_templates.php";
-  find_replace_templatesets("index", "#" . preg_quote('{$blacklist_index}') . "#i", '');
-  //im profil noch entfernen
-  find_replace_templatesets("usercp", "#" . preg_quote('{$blacklist_ucp}') . "#i", '');
-  // find_replace_templatesets("usercp_profile", "#" . preg_quote('{$blacklist_ucp_ice}') . "#i", '');
-
-  // Disable the task
-  $db->update_query('tasks', array('enabled' => 0), "file = 'blacklist'");
-}
-
-//ADMIN CP STUFF
-$plugins->add_hook("admin_config_settings_change", "activitytracker_settings_change");
-// Set peeker in ACP
-function activitytracker_settings_change()
-{
-  global $db, $mybb, $activitytracker_settings_peeker;
-
-  $result = $db->simple_select("settinggroups", "gid", "name='activitytracker'", array("limit" => 1));
-  $group = $db->fetch_array($result);
-  $activitytracker_settings_peeker = ($mybb->input['gid'] == $group['gid']) && ($mybb->request_method != 'post');
-}
-
-$plugins->add_hook("admin_settings_print_peekers", "activitytracker_settings_peek");
-// Add peeker in ACP
-function activitytracker_settings_peek(&$peekers)
-{
-  global $activitytracker_settings_peeker;
-
-  if ($activitytracker_settings_peeker) {
-    //Weitere Einstellungen im ACP anzeigen, je nach auswahl
-    $peekers[] = 'new Peeker($(".activitytracker_bl_ingamestart"), $("#activitytracker_bl_ingamestart_days"),/1/,true)';
-    $peekers[] = 'new Peeker($(".activitytracker_bl_noaway"), $("#activitytracker_bl_noaway_days"),/1/,true)';
-
-    $peekers[] = 'new Peeker($(".activitytracker_bl_ice"), $("#activitytracker_bl_iceduration"),/1/,true)';
-    $peekers[] = 'new Peeker($(".activitytracker_bl_ice"), $("#activitytracker_bl_icelock"),/1/,true)';
-    $peekers[] = 'new Peeker($(".activitytracker_bl_icelock"), $("#activitytracker_bl_icelock_days"),/1/,true)';
-    $peekers[] = 'new Peeker($(".activitytracker_bl_ice"), $("#activitytracker_bl_icenumber"),/1/,true)';
-  }
 }
 
 //TODO edit Task
@@ -859,25 +1025,30 @@ function activitytracker_editSettings()
 /**
  * Anzeige im Profil des Users, Status der Charaktere sind.
  */
-$plugins->add_hook('usercp_start', 'activitytracker_usercp_show');
-function activitytracker_usercp_show()
+$plugins->add_hook('usercp_start', 'activitytracker_usercp_main');
+function activitytracker_usercp_main()
 {
   global $db, $mybb, $templates, $activitytracker_bl_ucp;
   if ($mybb->get_input('action') != "activitytracker") {
     return false;
   }
 
+  //Übersicht
+  //Warnung welche Charaktere auf der BL stehen würden
+  //Ausgabe: würden die Charaktere am Erscheinungsdatum der Blacklist drauf stehen?
+  //Welcher Steht aktuell drauf + status (gestrichen / gepostet)
+  //activitytracker_check_blacklist
+
+
   //Einstellungen für Reminder Options ETC. 
   //Speichern der einstellung
+
 
   //Blacklist
   //Soll die Blacklist verwendet werden
   //einstellungen User Reminder
   //speichern einstellungen user reminder
 
-  //Warnung welche Charaktere auf der BL stehen würden
-  //Ausgabe: würden die Charaktere am Erscheinungsdatum der Blacklist drauf stehen?
-  //activitytracker_check_blacklist
 
   //Soll die Whitelist verwendet werden
   //Whiteliste - Wenn aktiv - Welche Charaktere zurückgemeldet sind
@@ -895,8 +1066,18 @@ function activitytracker_usercp_show()
 $plugins->add_hook("misc_start", "activitytracker_blacklist_show");
 function activitytracker_blacklist_show()
 {
-  global $mybb, $db, $templates, $activitytracker_show_main, $active_yes, $active_no, $header, $footer, $theme, $headerinclude, $activitytracker_show_view, $lang, $activitytracker_show_userbitaway;
+  global $mybb, $db, $templates, $header, $footer, $theme, $headerinclude,  $lang, $activitytracker_bl_show_main;
 
+
+  // if (!$mybb->get_input('action') == "blacklist_at") return;
+
+  if ($mybb->get_input('action') == "blacklist_at") {
+
+    echo "hallo";
+
+    eval("\$activitytracker_bl_show_main =\"" . $templates->get("activitytracker_bl_show_main") . "\";");
+    output_page($activitytracker_bl_show_main);
+  }
   //Ausgabe der aktuellen Blacklist für User wenn aktiv
 
   //Mods Immer Zugriff 
@@ -936,6 +1117,8 @@ function activitytracker_index()
   //Reminder Blacklist
 
   //Reminder Whitelist
+
+  //szenenerinnerung
 }
 
 /**
@@ -946,6 +1129,7 @@ $plugins->add_hook("member_profile_start", "activitytracker_viewOnIce");
 function activitytracker_viewOnIce()
 {
 }
+
 
 //Anzeige wer ist online
 $plugins->add_hook('fetch_wol_activity_end', 'activitytracker_user_activity');
@@ -980,11 +1164,32 @@ function activitytracker_location_activity($plugin_array)
   return $plugin_array;
 }
 
-
 /**
- * Hilfsfunktionen
+ * Funktion um alle User der gewählten Usergruppen zu bekommen
  */
+function activitytracker_get_users()
+{
+  global $db, $mybb;
+  //welche Gruppen sollen berücksichtig werden
+  $allgroups = $mybb->settings['activitytracker_groups'];
+  //in ein Array speichern
+  $allgroup_array = explode(",", $allgroups);
+  //return array initialisieren
+  $user_array = array();
 
+  //jede Gruppe durchgehen
+  foreach ($allgroup_array as $gid) {
+    //Gruppenmitglieder (primäre und sekundäre)
+    $arrayquery = $db->write_query("SELECT * FROM `" . TABLE_PREFIX . "users` WHERE usergroup = '{$gid}' or concat(',',additionalgroups,',') LIKE ',{$gid},'");
+
+    //durchgehen und in array speichern 
+    while ($user = $db->fetch_array($arrayquery)) {
+      $user_array[] = $user['uid'];
+    }
+  }
+  // Rückgabe
+  return array_unique($user_array);
+}
 
 /**
  * Hilfsfunktion Accountswitcher
@@ -992,7 +1197,7 @@ function activitytracker_location_activity($plugin_array)
  * @param uid 
  * @return chars Array mit uids
  */
-function activitytracker_get_allchars($uid)
+function activitytracker_get_allchars_as($uid)
 {
   global $mybb, $db;
   //array initialisieren und uid packen
@@ -1019,19 +1224,21 @@ function activitytracker_get_allchars($uid)
 /**
  * Hauptfunktion der Blacklist
  * Checkt ob ein Charakter auf der Blacklist stehen würde
- * @param int uid des Charakter
+ * @param array uids der Charaktere des users
  * @param string type von welchem datum ausgehend
  * @return array assoziatives array
- * array[uid]: [array[reason]: nopost | noactivescene | tooldscenes | noapplication | tooldapplication,] 
+ * array[uid]: [last-post, lastpostdate, fid, tid, pid, reason: (nopost | noactivescene | tooldscenes | noapplication | tooldapplication)
+ * 
+ * , [array[reason]: nopost | noactivescene | tooldscenes | noapplication | tooldapplication,] 
  * nopost: registered since 
  * noactivescene: lastposttid, lastpostdate
  * tooldscenes: lastposter, lastpostdate, tid
  * noapplication registered since
- * tooldapplication : ? 
+ * tooldapplication : registered since, postdatestecki
  */
-function activitytracker_check_blacklist($uid, $month)
+function activitytracker_check_blacklist($uids, $month)
 {
-  global $mybb;
+  global $mybb, $db;
   //get settings 
   //wie lange ist die Blacklist aktiv
   $frist_blacklistende = $mybb->settings['activitytracker_bl_deadline'];
@@ -1040,82 +1247,124 @@ function activitytracker_check_blacklist($uid, $month)
   $duration_post = $mybb->settings['activitytracker_bl_duration'];
   $bl_noscenes = $mybb->settings['activitytracker_bl_noscenes'];
 
-
   //aktueller monat wenn month = this 
   //sonst nächster Monat -> achtung mit Jahr!
   // $frist_date frist_blacklistdaystart + $month date + daysdeadline
 
   //Forenkram fids etc
   //Forenstring bauen
+  $archive_fid = str_replace(" ", "", "," . $mybb->settings['activitytracker_archiv']);
+  $ingame_fid  = str_replace(" ", "", "," . $mybb->settings['activitytracker_ingame']);
 
-  //charakterinfos bekommen
-  $charinfo = get_user($uid);
-  //Usergruppe des Charakter
-  //usergruppen / generelle regeln
+
+  //Welche Gruppen gelten als angenommen
   $generalgroup = $mybb->settings['activitytracker_groups'];
+  //Bewerbergruppe
   $applicantgroup = $mybb->settings['activitytracker_applicationgroup'];
-  //Mitglied ist angenommen
-  if (is_member($generalgroup, $uid)) {
-    //Post im Ingame
-    $ingamepost = activitytracker_posts_check($uid, "ingame");
-    //Post im Archiv
-    $archivepost = activitytracker_posts_check($uid, "archive");
+  //ausgeschlossene User
+  $applicantgroup = $mybb->settings['activitytracker_excludeduid'];
 
-    if (!$ingamepost && !$archivepost) {
-      //Gar keine Posts
-      //Kein Ingameeinstieg
-      //welche art überprüfung
-      //wobdate/register/area
-      //date entsprechend builden
-      //if > als ingameeinstieg 
-      //auf BL 
-
-    } else {
-      //es gibt posts im archiv oder im ingame
-
-      //es soll eine Sonderbehandlung für keine aktuellen Ingameszenen geben
-      if ($bl_noscenes) {
-        //testen ob es Szene im ingame gibt
-        if (!$ingamepost) {
-          //frist bekommen
-          $noscenes_days = $mybb->settings['activitytracker_bl_noscenes_days'];
-          //keine Szene
-          //activitytracker_get_last_scene_infos() of last scene
-          //get days 
-          //vergleich mit frist
-          //if last days > frist 
-          // array['noactivescene'] = array(since => lastpostdate)
-          // array[$uid] = array[noactivescene]
-        } else {
-        }
-      } else {
-        // keine sonderbehandlung
-        // get last post of user (egal ob ingame oder archiv)
-        // 
-      }
-    }
-  } elseif (is_member($applicantgroup, $uid)) {
-    //Mitglied ist Bewerber
-
-    //Mitglied hat seinen Steckbrief gepostet
-    //In Bewerbung
-
-    //Mitglied hat noch keinen Steckbrief gepostet
+  // Soll es eine gesonderteFrist für den Ingameeinstieg geben?
+  if ($mybb->settings['activitytracker_bl_ingamestart'] == 1) {
+    //wenn ja, holen wir uns den Zeitraum
+    $einstieg_zeitraum = $mybb->settings['activitytracker_bl_ingamestart_days'];
+  } else {
+    //wenn nein verwenden wir den normalen Zeitraum der Posts
+    $einstieg_zeitraum = $mybb->settings['activitytracker_bl_duration'];
   }
 
+  //array mit usern durchgehen
+  foreach ($uids as $uid) {
+    //charakterinfos bekommen
+    $charinfo = get_user($uid);
+    //Usergruppe des Charakter
+
+    //Mitglied ist angenommen
+    if (is_member($generalgroup, $uid)) {
+      //Post im Ingame
+      $ingamepost = activitytracker_posts_check($uid, $ingame_fid);
+      //Post im Archiv
+      $archivepost = activitytracker_posts_check($uid, $archive_fid);
+
+      if (!$ingamepost && !$archivepost) {
+        //Es gibt gar keine Posts des Users --> kein Ingameeinstieg
+
+        //wobdate/register/area
+        if ($mybb->settings['activitytracker_bl_wobdate'] == 'ales_wob') {
+          $wob = $db->fetch_field($db->simple_select("users", "wob_date", "uid = '{$uid}'"), "wob_date");
+        } elseif ($mybb->settings['activitytracker_bl_wobdate'] == 'risu_reg') {
+          $wob = $db->fetch_field($db->simple_select("users", "wobdate", "uid = '{$uid}'"), "wob_date");
+        } elseif ($mybb->settings['activitytracker_bl_wobdate'] == 'thread') {
+          //ID Steckiarea
+          $wob_fid = $mybb->settings['activitytracker_bl_wobdate_thread'];
+          $lastpost = activitytracker_get_lastpost($uid, $wob_fid);
+          //Wir gehen davon aus dass das Postdate = wobdate ist.
+          $wob = $lastpost['dateline'];
+        } else {
+          //-> default registrierungsdatum von mybb
+          $wob = $db->fetch_field($db->simple_select("users", "regdate", "uid = '{$uid}'"), "regdate");
+        }
+
+        //Differenz von heute zu wob berechnen.
+        //Umwandeln in DateTime Objekt - damit können wir besser rechnen.
+        $wob_datetime = (new DateTime())->setTimestamp($wob);
+        //heutiges Datum als DateTime Objekt 
+        $currentDate = new DateTime();
+        //berechnen der Tage
+        $diff = $currentDate->diff($wob_datetime);
+        $diff_days = $diff->days;
+        
+        //date entsprechend builden
+        //if > als ingameeinstieg 
+        //auf BL 
+
+      } else {
+        //es gibt posts im archiv oder im ingame
+
+
+        //es soll eine Sonderbehandlung für keine aktuellen Ingameszenen geben
+        if ($bl_noscenes) {
+          //testen ob es Szene im ingame gibt
+          if (!$ingamepost) {
+            //frist bekommen
+            $noscenes_days = $mybb->settings['activitytracker_bl_noscenes_days'];
+            //keine Szene
+            //activitytracker_get_last_scene_infos() of last scene
+            //get days 
+            //vergleich mit frist
+            //if last days > frist 
+            // array['noactivescene'] = array(since => lastpostdate)
+            // array[$uid] = array[noactivescene]
+          } else {
+          }
+        } else {
+          // keine sonderbehandlung
+          // get last post of user (egal ob ingame oder archiv)
+          // 
+        }
+      }
+    } elseif (is_member($applicantgroup, $uid)) {
+      //Mitglied ist Bewerber
+
+      //Mitglied hat seinen Steckbrief gepostet
+      //In Bewerbung
+
+      //Mitglied hat noch keinen Steckbrief gepostet
+    }
+  }
 }
 
 /**
  * Testet ob es einen Post des users in gegebener liste von Foren gibt
- * @param int - uid $pid
- * @param string - archiv, ingame, oder beides
+ * @param int - uid 
+ * @param string - einzelne fid oder kommagetrennte liste von fids
  * @return boolean
  * */
-function activitytracker_posts_check($uid, $type)
+function activitytracker_posts_check($uid, $fid)
 {
   global $mybb, $db;
-  //parentlist bilden
-  $fidlist = activitytracker_get_fids_string($type);
+  //parentlist bekommen
+  $fidlist = activitytracker_get_fids_string($fid);
 
   if ($fidlist != "") {
     if ($db->num_rows($db->simple_select("posts", "*", "uid = '{$uid}' AND fid in ({$fidlist});")) > 0) {
@@ -1123,6 +1372,31 @@ function activitytracker_posts_check($uid, $type)
     }
   }
   return false;
+}
+
+/**
+ * Letzten Post eines Users aus einem Forum (+childs) bekommen
+ * @param int uid 
+ * @param string forenliste
+ * @return array mit postdaten
+ */
+function activitytracker_get_lastpost($uid, $fidlist)
+{
+  global $db;
+  //array initialisieren
+  $post = array();
+  //liste aller foren bekommen
+  $getchilds = activitytracker_get_fids_string($fidlist);
+
+  //den letzten Post aus liste von foren bekommen
+  $post_query = $db->write_query("SELECT * from " . TABLE_PREFIX . "posts p
+  WHERE uid = '{$uid}' 
+  AND fid in ($getchilds) ORDER by dateline LIMIT 1");
+  //post in array speichern
+  while ($post = $db->fetch_array($post_query)) {
+    $post[] = $post;
+  }
+  return $post;
 }
 
 /**
@@ -1143,28 +1417,20 @@ function activitytracker_blacklist_alert()
 /**
  * Forumids
  * Die Forenids bekommen, in denen Posts berücksichtig werden
- * Ingame + Archive - exluded
+ * Gibt einen String zurück mit der liste von zu testenden Foren, außer der ausgeschlossenen
+ * @param string - fid oder , getrennte liste mit fids
  * @return string
  */
 
 function activitytracker_get_fids_string($type)
 {
   global $mybb;
+  // fidsttring bereinigen, vorsichtshalber
+  $fidsstr = str_replace(" ", "", "," . $type);
 
   $all_fids_str = array();
   //ausgeschlossene foren array - leerstellen rauswerfen falls vorhanden
   $excludedfids_array =  explode(",", str_replace(" ", "", $mybb->settings['activitytracker_fidexcluded']));
-
-  //welche fids brauchen wir
-  if ($type == "both") { //alle gegeben fids bekommen - leerstellen rauswerfen falls vorhanden
-    $fidsstr = str_replace(" ", "", "," . $mybb->settings['activitytracker_ingame'] . "," . $mybb->settings['activitytracker_archiv']);
-  }
-  if ($type == "archive") {
-    $fidsstr = str_replace(" ", "", "," . $mybb->settings['activitytracker_archiv']);
-  }
-  if ($type == "ingame") {
-    $fidsstr = str_replace(" ", "", "," . $mybb->settings['activitytracker_ingame']);
-  }
 
   //array basteln und leere einträge rauswerfen
   $fids_array = array_filter(explode(",", $fidsstr));
@@ -1186,12 +1452,18 @@ function activitytracker_get_fids_string($type)
 
 //test function
 
-$plugins->add_hook("global_end", "activitytracker_test");
+$plugins->add_hook("misc_start", "activitytracker_test");
 function activitytracker_test()
 {
 
-  echo "ich bin ein test";
-  var_dump(activitytracker_get_fids_string("both"));
+  // echo "ich bin ein test";
+  // $array = array();
+  // $array = activitytracker_get_users();
+
+  // activitytracker_get_lastpost(3, "14,20");
+  activitytracker_add_settings('update');
+  // var_dump($array);
+  // var_dump(activitytracker_check_blacklist("this"));
 
   //   $ingamefids_str =   get_child_list(4);
   // $archivefidss_str =  get_child_list(29);
