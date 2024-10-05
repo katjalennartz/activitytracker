@@ -716,6 +716,13 @@ function activitytracker_add_settings($type = "install")
       'value' => '1', // Default
       'disporder' => 39
     ),
+    'activitytracker_bl_characterstatus' => array(
+      'title' => 'Characterstatus von Risuena',
+      'description' => 'Wird das Characterstatusplugin von Risuena verwenden?',
+      "optionscode" => "yesno",
+      'value' => '0', // Default
+      'disporder' => 40
+    ),
     //Eisliste Zeitraum?
     'activitytracker_ice_duration' => array(
       'title' => 'Eisliste Zeitraum',
@@ -856,7 +863,7 @@ function activitytracker_add_settings($type = "install")
         }
       }
     }
-    echo "<p>Einstellungen wurden aktualisiert</p>";
+    echo "<p>Einstellungen wurden überpürft.</p>";
   }
   rebuild_settings();
 }
@@ -1147,6 +1154,7 @@ function activitytracker_user_activity($user_activity)
 
   //Whitelist
   //blacklist
+  //icelist
 
   return $user_activity;
 }
@@ -1227,25 +1235,44 @@ function activitytracker_get_allchars_as($uid)
  * @param array uids der Charaktere des users
  * @param string type von welchem datum ausgehend
  * @return array assoziatives array
- * array[uid]: [last-post, lastpostdate, fid, tid, pid, reason: (nopost | noactivescene | tooldscenes | noapplication | tooldapplication)
+ * array[uid]: [lastpostdate, fid, tid, pid, reason: (nopost | noactivescene | tooldscenes | noapplication | tooldapplication)
+ * Done:
+ * noingamestart / kein einsteig ins ingame
+ *  array[uid]: 
+ *    reason: noingamestart
+ *    wobdate: wobdate je nach einstellung
+ *    daysdiff: tage seit wobdate
  * 
- * , [array[reason]: nopost | noactivescene | tooldscenes | noapplication | tooldapplication,] 
- * nopost: registered since 
+ *  array[uid]: 
+ *    reason: noingamescene
+ *    ['lastpost'] = $noingame_lastpost['dateline'];
+ *    ['postdata'] = $noingame_lastpost;
+ *    ['daysdiff'] = $diff_days;
+ * 
+ * , [array[reason]: noingamestart | noactivescene | tooldscenes | noapplication | tooldapplication,] 
+ * noingamestart: registered since 
  * noactivescene: lastposttid, lastpostdate
  * tooldscenes: lastposter, lastpostdate, tid
  * noapplication registered since
  * tooldapplication : registered since, postdatestecki
  */
-function activitytracker_check_blacklist($uids, $month)
+function activitytracker_check_blacklist($uids)
 {
   global $mybb, $db;
+  //blacklist array initalisieren
+  $blacklistarray = array();
   //get settings 
+
   //wie lange ist die Blacklist aktiv
   $frist_blacklistende = $mybb->settings['activitytracker_bl_deadline'];
   $frist_blacklistdaystart = $mybb->settings['activitytracker_bl_turnus_day'];
 
+  //wieviele tage für post
   $duration_post = $mybb->settings['activitytracker_bl_duration'];
+
+  //Soll es eine gesonderte Frist geben, wenn es keinen Post im Ingame gibt
   $bl_noscenes = $mybb->settings['activitytracker_bl_noscenes'];
+  $noscenes_days = $mybb->settings['activitytracker_bl_noscenes_days'];
 
   //aktueller monat wenn month = this 
   //sonst nächster Monat -> achtung mit Jahr!
@@ -1256,6 +1283,12 @@ function activitytracker_check_blacklist($uids, $month)
   $archive_fid = str_replace(" ", "", "," . $mybb->settings['activitytracker_archiv']);
   $ingame_fid  = str_replace(" ", "", "," . $mybb->settings['activitytracker_ingame']);
 
+  //string für Archiv & Ingame, abfangen wenn kein Archiv angegeben ist
+  if ($mybb->settings['activitytracker_archiv'] != "") {
+    $ingame_archive_fid = $ingame_fid . "," . $archive_fid;
+  } else {
+    $ingame_archive_fid = $ingame_fid;
+  }
 
   //Welche Gruppen gelten als angenommen
   $generalgroup = $mybb->settings['activitytracker_groups'];
@@ -1263,21 +1296,20 @@ function activitytracker_check_blacklist($uids, $month)
   $applicantgroup = $mybb->settings['activitytracker_applicationgroup'];
   //ausgeschlossene User
   $applicantgroup = $mybb->settings['activitytracker_excludeduid'];
-
+  $ingame_days = $mybb->settings['activitytracker_bl_duration'];
   // Soll es eine gesonderteFrist für den Ingameeinstieg geben?
   if ($mybb->settings['activitytracker_bl_ingamestart'] == 1) {
     //wenn ja, holen wir uns den Zeitraum
-    $einstieg_zeitraum = $mybb->settings['activitytracker_bl_ingamestart_days'];
+    $ingamestart_days = $mybb->settings['activitytracker_bl_ingamestart_days'];
   } else {
     //wenn nein verwenden wir den normalen Zeitraum der Posts
-    $einstieg_zeitraum = $mybb->settings['activitytracker_bl_duration'];
+    $ingamestart_days = $ingame_days;
   }
 
   //array mit usern durchgehen
   foreach ($uids as $uid) {
     //charakterinfos bekommen
     $charinfo = get_user($uid);
-    //Usergruppe des Charakter
 
     //Mitglied ist angenommen
     if (is_member($generalgroup, $uid)) {
@@ -1288,7 +1320,6 @@ function activitytracker_check_blacklist($uids, $month)
 
       if (!$ingamepost && !$archivepost) {
         //Es gibt gar keine Posts des Users --> kein Ingameeinstieg
-
         //wobdate/register/area
         if ($mybb->settings['activitytracker_bl_wobdate'] == 'ales_wob') {
           $wob = $db->fetch_field($db->simple_select("users", "wob_date", "uid = '{$uid}'"), "wob_date");
@@ -1308,39 +1339,57 @@ function activitytracker_check_blacklist($uids, $month)
         //Differenz von heute zu wob berechnen.
         //Umwandeln in DateTime Objekt - damit können wir besser rechnen.
         $wob_datetime = (new DateTime())->setTimestamp($wob);
-        //heutiges Datum als DateTime Objekt 
-        $currentDate = new DateTime();
-        //berechnen der Tage
-        $diff = $currentDate->diff($wob_datetime);
-        $diff_days = $diff->days;
-        
-        //date entsprechend builden
-        //if > als ingameeinstieg 
-        //auf BL 
 
+        //berechnen der Tage
+        $diff_days = activitytracker_get_days_diff($wob_datetime);
+
+        if ($diff_days >= $ingamestart_days) {
+          $blacklistarray[$uid]['reason'] = "noingamestart";
+          $blacklistarray[$uid]['wobdate'] = $wob;
+          $blacklistarray[$uid]['daysdiff'] = $diff_days;
+        }
       } else {
         //es gibt posts im archiv oder im ingame
-
 
         //es soll eine Sonderbehandlung für keine aktuellen Ingameszenen geben
         if ($bl_noscenes) {
           //testen ob es Szene im ingame gibt
           if (!$ingamepost) {
-            //frist bekommen
-            $noscenes_days = $mybb->settings['activitytracker_bl_noscenes_days'];
-            //keine Szene
-            //activitytracker_get_last_scene_infos() of last scene
-            //get days 
-            //vergleich mit frist
-            //if last days > frist 
-            // array['noactivescene'] = array(since => lastpostdate)
-            // array[$uid] = array[noactivescene]
+            //keine Szene im Ingame, also muss es eine im Archive geben
+            $noingame_lastpost = activitytracker_get_lastpost($uid, $archive_fid);
+            $lastpost_datetime = (new DateTime())->setTimestamp($noingame_lastpost['dateline']);
+            $diff_days = activitytracker_get_days_diff($lastpost_datetime);
+
+            //Zeitraum größer also steht der Charakter auf der Blacklist
+            if ($diff_days >= $noscenes_days) {
+              $blacklistarray[$uid]['reason'] = "noingamescene";
+              $blacklistarray[$uid]['lastpost'] = $noingame_lastpost['dateline'];
+              $blacklistarray[$uid]['postdata'] = $noingame_lastpost;
+              $blacklistarray[$uid]['daysdiff'] = $diff_days;
+            }
           } else {
+            //Testen ob der letzte Ingamepost innerhalb der Frist ist
+            $ingame_lastpost = activitytracker_get_lastpost($uid, $ingame_fid);
+            $lastpost_datetime = (new DateTime())->setTimestamp($ingame_lastpost['dateline']);
+            $diff_days = activitytracker_get_days_diff($lastpost_datetime);
+            if ($diff_days >= $ingame_days) {
+              $blacklistarray[$uid]['reason'] = "ingamescenetoold";
+              $blacklistarray[$uid]['lastpost'] = $ingame_lastpost['dateline'];
+              $blacklistarray[$uid]['postdata'] = $ingame_lastpost;
+              $blacklistarray[$uid]['daysdiff'] = $diff_days;
+            }
           }
         } else {
-          // keine sonderbehandlung
-          // get last post of user (egal ob ingame oder archiv)
-          // 
+            //Testen ob der letzte Post (ingame + Archive)innerhalb der Frist ist
+            $ingame_lastpost = activitytracker_get_lastpost($uid, $ingame_archive_fid);
+            $lastpost_datetime = (new DateTime())->setTimestamp($ingame_lastpost['dateline']);
+            $diff_days = activitytracker_get_days_diff($lastpost_datetime);
+            if ($diff_days >= $ingame_days) {
+              $blacklistarray[$uid]['reason'] = "ingamescenetoold";
+              $blacklistarray[$uid]['lastpost'] = $ingame_lastpost['dateline'];
+              $blacklistarray[$uid]['postdata'] = $ingame_lastpost;
+              $blacklistarray[$uid]['daysdiff'] = $diff_days;
+            }
         }
       }
     } elseif (is_member($applicantgroup, $uid)) {
@@ -1400,6 +1449,23 @@ function activitytracker_get_lastpost($uid, $fidlist)
 }
 
 /**
+ * Get days Diff
+ * Sendet Mails an die User die auf der Blacklist stehen
+ * Je nach Einstellung als PN oder als Mail
+ * @param DateTime 
+ * @return int 
+ */
+function activitytracker_get_days_diff($datetime)
+{
+  //heutiges Datum als DateTime Objekt 
+  $currentDate = new DateTime();
+  $diff = $currentDate->diff($datetime);
+  $diff_days = $diff->days;
+  return $diff_days;
+}
+
+
+/**
  * Benachrichtigungsfunktion
  * Sendet Mails an die User die auf der Blacklist stehen
  * Je nach Einstellung als PN oder als Mail
@@ -1425,6 +1491,8 @@ function activitytracker_blacklist_alert()
 function activitytracker_get_fids_string($type)
 {
   global $mybb;
+
+
   // fidsttring bereinigen, vorsichtshalber
   $fidsstr = str_replace(" ", "", "," . $type);
 
@@ -1455,13 +1523,14 @@ function activitytracker_get_fids_string($type)
 $plugins->add_hook("misc_start", "activitytracker_test");
 function activitytracker_test()
 {
-
+  $testarray = array(3);
+  activitytracker_check_blacklist($testarray);
   // echo "ich bin ein test";
   // $array = array();
   // $array = activitytracker_get_users();
 
   // activitytracker_get_lastpost(3, "14,20");
-  activitytracker_add_settings('update');
+  // activitytracker_add_settings('update');
   // var_dump($array);
   // var_dump(activitytracker_check_blacklist("this"));
 
