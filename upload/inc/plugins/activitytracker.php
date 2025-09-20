@@ -1758,7 +1758,6 @@ function activitytracker_index()
 
         $activitytracker_bl_index_reminder_info = $lang->activitytracker_bl_index_reminder_info;
         if ($blinfo['status'] != 'stroke' && $blinfo['away'] == 0) {
-          echo "hallo";
           $userinfo = get_user($uid);
           $characters .= $userinfo['username'] . ", ";
         }
