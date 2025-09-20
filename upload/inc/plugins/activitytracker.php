@@ -1008,35 +1008,15 @@ function activititracker_templatearray()
   $insert_array[] = array(
     'title'    => 'activitytracker_bl_show_main',
     'template'  => $db->escape_string('
-        <head>
-        <title>Blacklist</title>
-        {$headerinclude}
-        </head>
-        <body>
-        {$header}
-        <table width="100%" border="0" align="center">
-        <tr>
-        {$usercpnav}
-        <td valign="top">
-        <table border="0" cellspacing="{$theme[\'borderwidth\']}" cellpadding="{$theme[\'tablespace\']}" class="tborder">
-        <tr>
-        <td class="thead" colspan="2"><strong>Blacklist</strong></td>
-        </tr>
-        <tr>
-        <td class="trow2">
-            <div class="at-blacklist">
-              {$activitytracker_bl_show_main_userbit}         
-            </div>
-        </td>
-        </tr>
-        </table>
-        </td>
-        </tr>
-        </table>
-        {$footer}
-        </body>
-        </html>   
-
+        <div class="pm_alert bl-reminder">
+	<div class="bl-reminder__content">
+	{$activitytracker_bl_index_reminder_info}
+	{$activitytracker_bl_index_reminder_bit}
+	</div>
+	<div class="bl-reminder__options">
+		<a href="{$mybb->settings[\'bburl\']}/misc.php?action=blacklist_hide_info">[ausblenden]</a>
+	</div>
+</div>
     '),
     'sid'    => '-2',
     'version'  => '0',
@@ -1044,14 +1024,8 @@ function activititracker_templatearray()
   );
 
   $insert_array[] = array(
-    'title'    => 'activitytracker_bl_show_main_userbit',
-    'template'  => $db->escape_string('<div class="at-blacklist__user">
-      <div class="at-blacklist__userinfos">
-        <h2>{$username}</h2>
-      </div>
-      <div class="at-blacklist__charainfors">
-      {$activitytracker_bl_show_main_charabit}         
-    </div>
+    'title'    => 'activitytracker_bl_index_reminder_is_bit',
+    'template'  => $db->escape_string('<div class="bl-reminder__characterinfo">{$characters} {$blacklistwarning}</div>
     '),
     'sid'    => '-2',
     'version'  => '0',
@@ -1059,18 +1033,36 @@ function activititracker_templatearray()
   );
 
   $insert_array[] = array(
-    'title'    => 'activitytracker_bl_show_main_charabit',
-    'template'  => $db->escape_string('<div class="at-blacklist__chara">
-        <div class="at-blacklist__charaname">
-        {$linked_charaname} 
-        </div>
-        <div class="at-blacklist__charareason">
-        {$reason}
-        </div>
-        <div class="at-blacklist__charaoptions">
-        {$status} 
-        </div> 
-      </div>
+    'title'    => 'activitytracker_bl_show_main',
+    'template'  => $db->escape_string('<head>
+	<title>Blacklist</title>
+	{$headerinclude}
+</head>
+<body>
+	{$header}
+	<table width="100%" border="0" align="center">
+		<tr>
+			{$usercpnav}
+			<td valign="top">
+				<table border="0" cellspacing="{$theme[\'borderwidth\']}" cellpadding="{$theme[\'tablespace\']}" class="tborder">
+					<tr>
+						<td class="thead" colspan="2"><strong>Blacklist</strong></td>
+					</tr>
+					<tr>
+						<td class="trow2">
+							<div class="at-blacklistinfo">Die Blacklist wird immer am {$frist_blacklistdaystart}. veröffentlicht. Du hast {$frist_bl_deadline_days_to_post} Tage Zeit bis zur Löschung.</div>
+							<div class="at-blacklist">
+								{$activitytracker_bl_show_main_userbit}         
+							</div>
+						</td>
+					</tr>
+				</table>
+			</td>
+		</tr>
+	</table>
+	{$footer}
+</body>
+</html>
      '),
     'sid'    => '-2',
     'version'  => '0',
@@ -1079,59 +1071,161 @@ function activititracker_templatearray()
 
 
   $insert_array[] = array(
-    'title'    => 'activitytracker_bl_index_reminder',
-    'template'  => $db->escape_string('
-        Dein Charakter würde auf der nächsten BL stehen -> wegdrücken
-               '),
+    'title'    => 'activitytracker_bl_show_main_charabit',
+    'template'  => $db->escape_string('<div class="at-blacklist__chara">
+	<div class="at-blacklist__charaname {$strokeinfoclass}">
+		<h3>{$linked_charaname}</h3>
+	</div>
+	<div class="at-blacklist__charareason ">
+		<span class="{$strokeinfoclass}">{$reason}</span>
+		{$activitytracker_bl_show_main_charabit_threads}
+		{$strokeinfo}
+	</div>
+	<div class="at-blacklist__options">{$activitytracker_bl_show_main_useroptions}{$activitytracker_bl_show_main_modoptions}</div>
+</div>'),
     'sid'    => '-2',
     'version'  => '0',
     'dateline'  => TIME_NOW
   );
 
   $insert_array[] = array(
-    'title'    => 'activitytracker_bl_index_reminder_is_bit',
-    'template'  => $db->escape_string('
-      X steht auf der BL
-           
-        '),
+    'title'    => 'activitytracker_bl_show_main_charabit_threads',
+    'template'  => $db->escape_string('<div class="at-blacklist__threadlink">{$threadlink}</div>'),
     'sid'    => '-2',
     'version'  => '0',
     'dateline'  => TIME_NOW
   );
 
   $insert_array[] = array(
-    'title'    => 'activitytracker_bl_index_reminder_would_bit',
-    'template'  => $db->escape_string('
-        X steht auf der BL
-             
-          '),
+    'title'    => 'activitytracker_bl_show_main_modoptions',
+    'template'  => $db->escape_string('<div class="at-blacklist__modoptions"><b>Moderationsoptionen</b><br>{$strokelink_mod}
+	{$delete}
+</div>'),
     'sid'    => '-2',
     'version'  => '0',
     'dateline'  => TIME_NOW
   );
 
-
-
-
-
+  $insert_array[] = array(
+    'title'    => 'activitytracker_bl_show_main_userbit',
+    'template'  => $db->escape_string('<div class="at-blacklist__user">
+	<div class="at-blacklist__userinfos">
+		<h2>{$username}</h2>
+		{$deletemarkinfo}
+	</div>
+	<div class="at-blacklist__charainfors">
+		{$activitytracker_bl_show_main_charabit}
+	</div>
+</div>'),
+    'sid'    => '-2',
+    'version'  => '0',
+    'dateline'  => TIME_NOW
+  );
 
   $insert_array[] = array(
     'title'    => 'activitytracker_bl_show_main_useroptions',
     'template'  => $db->escape_string('<div class="at-blacklist__useroptions">
-        {$status} 
-        {$strokelink}
-        {$marktodel}
-      </div>'),
+	{$status} 
+	{$strokelink}
+	{$marktodel}
+</div>'),
     'sid'    => '-2',
     'version'  => '0',
     'dateline'  => TIME_NOW
   );
 
+  $insert_array[] = array(
+    'title'    => 'activitytracker_bl_show_main_modoptions',
+    'template'  => $db->escape_string('<div class="at-blacklist__modoptions"><b>Moderationsoptionen</b><br>{$strokelink_mod}
+	{$delete}
+</div>'),
+    'sid'    => '-2',
+    'version'  => '0',
+    'dateline'  => TIME_NOW
+  );
 
+  $insert_array[] = array(
+    'title'    => 'activitytracker_bl_ucp',
+    'template'  => $db->escape_string('Die Blacklist ist gerade {$bl_status}. Sie erscheint {$bl_turnus}.
+<table class="tborder">
+	<tr>
+		<td class="thead" colspan="2"><strong>Blacklistgefährdet</strong></td>
+	</tr>
+	{$activitytracker_bl_ucp_charabit}
+</table>'),
+    'sid'    => '-2',
+    'version'  => '0',
+    'dateline'  => TIME_NOW
+  );
+
+  $insert_array[] = array(
+    'title'    => 'activitytracker_bl_ucp_charabit',
+    'template'  => $db->escape_string('<tr>
+	<td>{$charainfo[\'username\']}</td>
+	<td>{$reason}</td>
+</tr>'),
+    'sid'    => '-2',
+    'version'  => '0',
+    'dateline'  => TIME_NOW
+  );
+
+  $insert_array[] = array(
+    'title'    => 'activitytracker_ucp',
+    'template'  => $db->escape_string('<html>
+	<head>
+		<title>{$lang->user_cp} - Aktivitätstracker</title>
+		{$headerinclude}
+	</head>
+	<body>
+		{$header}
+			{$usercpnav}
+		<table border="0" cellspacing="{$theme[\'borderwidth\']}" cellpadding="{$theme[\'tablespace\']}" class="tborder">
+			<tr>
+				<td class="thead" colspan="0">
+					<div class="usercp_titlebox">
+						<div class="usercp_titlebox_icon">
+							<img src="{$upload_data[\'icon\']}">
+						</div>
+						<div class="usercp_titlebox_h1">
+							Aktivitätstrackerübersicht von<br> {$username}
+						</div>
+					</div>
+				</td>
+			</tr>
+		</table>	
+
+		<table border="0" cellspacing="{$theme[\'borderwidth\']}" cellpadding="{$theme[\'tablespace\']}" class="tborder">
+			<tr>
+				<td valign="top" class="usercp_background">
+					<table border="0" cellspacing="{$theme[\'borderwidth\']}" cellpadding="{$theme[\'tablespace\']}" class="tborder">
+						<tr>
+							<td class="trow2">
+
+								<div class="usercp_content_text">
+									<table width="100%" class="tborder" cellspacing="0" cellpadding="0">
+										<tr><td class="thead"><strong>Aktivitätstracker</strong></td></tr>
+										<tr><td class="trow2">Hier hast du eine Übersicht über deine Charaktere.</td></tr>
+										<tr><td class="trow2">{$activitytracker_bl_ucp}</td></tr>
+									</table>
+
+								</div>
+							</td>
+						</tr>
+					</table>
+					
+				</td>
+			</tr>
+		</table>
+		{$footer}
+	</body>
+</html>'),
+    'sid'    => '-2',
+    'version'  => '0',
+    'dateline'  => TIME_NOW
+  );
 
   return $insert_array;
 }
-
 
 $plugins->add_hook('admin_config_settings_change_commit', 'activitytracker_editSettings');
 function activitytracker_editSettings()
@@ -1291,7 +1385,7 @@ function activitytracker_usercp_main()
   }
 
   foreach ($uidarray as $uid) {
-    //für jeden Testen ob er auf der Blacklist stehen würde
+    //für jeden Charakter des Users Testen ob er auf der Blacklist stehen würde
     if ($mybb->settings['activitytracker_bl'] == 1) {
       $blacklist_array = activitytracker_check_blacklist($uid);
 
