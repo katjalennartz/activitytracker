@@ -51,7 +51,6 @@ function activitytracker_install()
    * Tasks Anlegen
    */
   //Task, der per Default einmal im Monat ausgeführt wird.
-  //TODO : Ändern wenn anders im ACP eingestellt wird 
   $db->insert_query('tasks', array(
     'title' => 'blacklist',
     'description' => 'Stellt die Blacklist zusammen.',
@@ -191,7 +190,7 @@ function activitytracker_uninstall()
   rebuild_settings();
 
   // Tasks löschen
-  $db->delete_query("tasks", "file='activitytracker%'");
+  $db->delete_query("tasks", "file='at_%'");
   $cache->update_tasks();
 
   if ($db->field_exists("activitytracker_bl_view", "users")) {
@@ -206,8 +205,6 @@ function activitytracker_uninstall()
   if ($db->field_exists("activitytracker_bl_ice_date", "users")) {
     $db->write_query("ALTER TABLE " . TABLE_PREFIX . "users DROP activitytracker_bl_ice_date");
   }
-
-  //TODO TASK LÖSCHEN!!!!
 }
 
 //Plugin Aktivieren
@@ -355,6 +352,23 @@ function activitytracker_add_db($type = "install")
       `ignore` int(10) DEFAULT 0,
       PRIMARY KEY (`srid`)
       ) ENGINE=MyISAM CHARACTER SET utf8 COLLATE utf8_general_ci;");
+  }
+  if (!$db->table_exists("at_reminder")) {
+    $db->write_query("CREATE TABLE `" . TABLE_PREFIX . "at_reminder` (
+    `r_id` int(10) NOT NULL AUTO_INCREMENT,
+    `uid` INT(10) NOT NULL DEFAULT '0',
+    `type` varchar(50) NULL DEFAULT NULL,
+    `hide` INT(10) NOT NULL DEFAULT '0',
+    PRIMARY KEY (`r_id`)
+    ) ENGINE=MyISAM CHARACTER SET utf8 COLLATE utf8_general_ci;");
+  }
+
+  if (!$db->table_exists("at_bl_lastrun")) {
+    $db->write_query("CREATE TABLE `" . TABLE_PREFIX . "at_bl_lastrun` (
+    `bl_id` int(10) NOT NULL AUTO_INCREMENT,
+    `bl_lastrun` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`bl_id`)
+    ) ENGINE=MyISAM CHARACTER SET utf8 COLLATE utf8_general_ci;");
   }
 }
 
@@ -1119,46 +1133,17 @@ function activititracker_templatearray()
 }
 
 
-
-// //TODO edit Task
-// $plugins->add_hook("admin_config_settings_change_commit", "activitytracker_editSettings");
-// function activitytracker_editSettings()
-// {
-//   global $db, $mybb;
-
-//   //wurde etwas an den Taskseinstellungen geändert?
-//   //Blacklistask
-//   //Bliacklistask autooff
-//   //Blacklist Benachrichtigung
-
-//   //Whitelist
-//   //Whitelist autooff
-
-//   //Eisliste
-
-//   //vergleiche alte Settings mit Input
-//   //wenn ja -> ändern speichern
-//   //Tasks Cache Updaten
-
-//   // $var = $mybb->input['upsetting']['blacklist_days'];
-//   // $db->update_query('tasks', array('day' => $var), "file = 'blacklist'");
-// }
-
 $plugins->add_hook('admin_config_settings_change_commit', 'activitytracker_editSettings');
 function activitytracker_editSettings()
 {
   global $mybb, $db;
 
-  // Prüfen, ob unser Turnus-Setting vorhanden ist
-  if (!isset($mybb->settings['activitytracker_bl_turnus'])) {
-    return;
-  }
-
+  // Blacklist task
   $turnus = $mybb->settings['activitytracker_bl_turnus'];
   $particular = (int)$mybb->settings['activitytracker_bl_turnus_particular'];
 
   // Default Task - Immer am 1. des Monats ausführen (um 00:01)
-  $task_update = [
+  $task_update_bl = [
     'minute'   => '1',
     'hour'     => '0',
     'day'      => '1',
@@ -1171,43 +1156,60 @@ function activitytracker_editSettings()
   switch ($turnus) {
     case 'weekly':
       // einmal Wöchentlich, immer Montags
-      $task_update['weekday'] = 1; // Montag
+      $task_update_bl['weekday'] = 1; // Montag
       break;
-
     case '2weekly':
       // alle 2 Wochen, immer Montags, abfangen dafür im Task
-      $task_update['weekday'] = 1;
+      $task_update_bl['weekday'] = 1;
       break;
 
     case 'monthly':
       // einmal im Monat, je nach Tag 
-      $task_update['day'] = (int)$mybb->settings['activitytracker_bl_turnus_day'];
-      if ($task_update['day'] == 0) {
-        $task_update['day'] = 1; // Fallback auf den 1., falls 0 eingestellt ist
+      $task_update_bl['day'] = (int)$mybb->settings['activitytracker_bl_turnus_day'];
+      if ($task_update_bl['day'] == 0) {
+        $task_update_bl['day'] = 1; // Fallback auf den 1., falls 0 eingestellt ist
       }
       break;
 
     case 'particular':
       // nur in bestimmten Monaten
-      $task_update['day']   = (int)$mybb->settings['activitytracker_bl_turnus_day'];
-      if ($task_update['day'] == 0) {
-        $task_update['day'] = 1; // Fallback auf den 1., falls 0 eingestellt ist
+      $task_update_bl['day']   = (int)$mybb->settings['activitytracker_bl_turnus_day'];
+      if ($task_update_bl['day'] == 0) {
+        $task_update_bl['day'] = 1; // Fallback auf den 1., falls 0 eingestellt ist
       }
 
       $particular = $mybb->settings['activitytracker_bl_turnus_particular'];
-      $task_update['month'] = $particular;
+      $task_update_bl['month'] = $particular;
       break;
 
     case 'manuel':
     default:
       // manuell → Task deaktivieren
-      $task_update['enabled'] = 0;
+      $task_update_bl['enabled'] = 0;
       break;
   }
 
-  // Task aktualisieren (Name anpassen!)
-  $db->update_query('tasks', $task_update, "file='activitytracker_blacklist'");
+  // Task aktualisieren
+  $db->update_query('tasks', $task_update_bl, "file='at_blacklist'");
+
+  $task_update_bl_autooff = [
+    'minute'   => '59',
+    'hour'     => '23',
+    'day'      => '*',
+    'month'    => '*',
+    'weekday'  => '*',
+    'enabled'  => 1,
+    'nextrun'  => TIME_NOW + 60,
+  ];
+
+  //Blacklist Status (automatisches deaktivieren)
+  if ($mybb->settings['activitytracker_bl_autooff'] == 0) {
+    $task_update_bl_autooff['enabled'] = 0;
+  } else {
+    $task_update_bl_autooff['enabled'] = 1;
+  }
 }
+
 /**
  * Anzeige im Profil des Users, Status der Charaktere sind.
  */
@@ -1234,22 +1236,22 @@ function activitytracker_usercp_main()
     $bl_status = $lang->blacklist_status_active;
   }
 
-  //get data for Information
+  //output für infos
   switch ($mybb->settings['activitytracker_bl_turnus']) {
     case 'weekly':
-      $bl_turnus = "wöchentlich";
+      $bl_turnus = $lang->blacklist_turnus_weekly;
       break;
 
     case '2weekly':
-      $bl_turnus = "alle 2 Wochen";
+      $bl_turnus = $lang->blacklist_turnus_2weekly;
       break;
 
     case 'monthly':
       $month_info = $mybb->settings['activitytracker_bl_turnus_extrainfo_month'];
       if ($month_info) {
-        $bl_turnus = "monatlich";
+        $bl_turnus = $lang->blacklist_turnus_monthly;
       } else {
-        $bl_turnus = "monatlich(im Juli für Juni... etc)";
+        $bl_turnus = $lang->blacklist_turnus_monthly_lastmonth;
       }
       break;
 
@@ -1274,20 +1276,21 @@ function activitytracker_usercp_main()
       // Monatsnamen rausholen
       $selectedMonths = array_map(fn($id) => $months[(int)$id], $ids);
 
-      $bl_turnus = "in gewählten Monaten: " . implode(", ", $selectedMonths) . ". Immer am " . $mybb->settings['activitytracker_bl_turnus_day'];
+      $month = implode(", ", $selectedMonths);
+      $day = $mybb->settings['activitytracker_bl_turnus_day'];
+      $bl_turnus = $lang->sprintf($lang->blacklist_turnus_particular, $month, $day);
       break;
 
     case 'manuel':
-      $bl_turnus = "nach manueller Ausführung des Teams.";
+      $bl_turnus = $lang->blacklist_turnus_manuel;
       break;
 
     default:
-      $reason = "unbekannt";
+      $bl_turnus = $lang->blacklist_turnus_unknown;
       break;
   }
 
   foreach ($uidarray as $uid) {
-
     //für jeden Testen ob er auf der Blacklist stehen würde
     if ($mybb->settings['activitytracker_bl'] == 1) {
       $blacklist_array = activitytracker_check_blacklist($uid);
@@ -1645,27 +1648,40 @@ function activitytracker_whitelist_show()
 $plugins->add_hook("index_start", "activitytracker_index");
 function activitytracker_index()
 {
-  global $mybb, $db, $templates;
+  global $mybb, $db, $templates, $blacklist_index, $lang, $activitytracker_bl_index_reminder_bit;
 
+  $lang->load('activitytracker');
   //Reminder Blacklist - Blacklist ist aktiv dein Charakter würde drauf stehen.
   if ($mybb->settings['activitytracker_bl_reminder_isonbl'] && $mybb->settings['activitytracker_bl_activ']) {
     $allchars = activitytracker_get_allchars_as($mybb->user['uid']);
+    $characters = "";
+    $cnt = 0;
     foreach ($allchars as $uid) {
       $checkbl = $db->simple_select("at_blacklist", "*", "uid='{$uid}'");
       if ($db->num_rows($checkbl) > 0) {
-        //Charakter ist auf der Blacklist
+        $cnt++;
         $blinfo = $db->fetch_array($checkbl);
-        // if($blinfo['status'] != 'stroke' && $blinfo['away'] == 0){
-        //Charakter ist nicht gestrichen und nicht abwesend
-        //Anzeige bauen
-        //TODO Template
-        eval("\$activitytracker_bl_index_reminder =\"" . $templates->get("activitytracker_bl_index_reminder") . "\";");
-        // }
+
+        $activitytracker_bl_index_reminder_info = $lang->activitytracker_bl_index_reminder_info;
+        if ($blinfo['status'] != 'stroke' && $blinfo['away'] == 0) {
+          echo "hallo";
+          $userinfo = get_user($uid);
+          $characters .= $userinfo['username'] . ", ";
+        }
       }
     }
+
+    //die letzten 2 Zeichen abschneiden (Komma und Leerzeichen)
+    $characters = substr($characters, 0, -2);
+    if ($cnt > 1) {
+      $blacklistwarning = $lang->activitytracker_bl_index_reminder_warning_multi;
+    } else {
+      $blacklistwarning = $lang->activitytracker_bl_index_reminder_warning;
+    }
+
+    eval("\$activitytracker_bl_index_reminder_bit =\"" . $templates->get("activitytracker_bl_index_reminder_is_bit") . "\";");
   }
-
-
+  eval("\$blacklist_index =\"" . $templates->get("activitytracker_bl_index_reminder") . "\";");
   //Reminder Whitelist
 
   //szenenerinnerung
@@ -1779,11 +1795,11 @@ function activitytracker_check_blacklist($uid, ?DateTime $checkdate = null)
   $blacklistarray = array();
   //für welches datum soll getestet werden, wenn keins übergeben wird, immer heute
   $checkdate = $checkdate ?? new DateTime('now');
-  // echo "<h2>in activitytracker_check_blacklist für uid  $uid</h2>";
+
   //get settings 
-  //wie lange ist die Blacklist aktiv
   $frist_blacklistende = $mybb->settings['activitytracker_bl_deadline'];
   $frist_blacklistdaystart = $mybb->settings['activitytracker_bl_turnus_day'];
+
   $setting_ingame_start = $mybb->settings['activitytracker_bl_ingamestart'];
   $wobdate = $mybb->settings['activitytracker_bl_wobdate'];
   //wieviele tage für post
@@ -1825,7 +1841,6 @@ function activitytracker_check_blacklist($uid, ?DateTime $checkdate = null)
 
   //alle User durchgehen
   // foreach ($uids as $uid) {
-  // echo "<hr><h3>uid: {$uid}</h3> activitytracker_check_blacklist<br>";
   $scene_count_has_to = 0;
   $scene_count = 0;
   //Charkterinfos bekommen
@@ -1857,7 +1872,6 @@ function activitytracker_check_blacklist($uid, ?DateTime $checkdate = null)
   } else {
     //user is angenommen
     if (is_member($generalgroup, $uid)) {
-      // echo "User ist angenommen activitytracker_check_blacklist<br>";
       // es gibt keine posts (weder ingame noch archiv ) - also keinen ingameeinstieg (weil weder ein Post im Archiv noch im Ingame)
       if (!$ingamepost && !$archivepost) {
         // echo "Es gibt keine Posts im Ingame und Archiv activitytracker_check_blacklist<br>";
@@ -1883,14 +1897,11 @@ function activitytracker_check_blacklist($uid, ?DateTime $checkdate = null)
         }
       }
 
-      // if ($bl_noscenes == 1 || $bl_noscenes == 2) { //Sonderbehandlung für keine offenen Szenen im Ingame
       if ($ingamepost) {
-        // activitytracker_check_posts_in_ingame($setting_checktype,$uid, $ingame_fid, $timeperiod, $checkdate); 
-        // echo "Es gibt Posts im Ingame activitytracker_check_blacklist<br>";
         //Es gibt Ingameposts - wir prüfen ob der letzte post in der Frist liegt
+
         //setting holen, ob wir schauen ob wir pro szene schauen, wann gepostet wurde, oder einfach nur allgemein pro chara
         if ($setting_checktype === 'lastingame') {
-          // echo "Wir schauen pro Charakter <br>";
           //Letzter Post des Charakters im Ingame
           //Soll die Reihenfolge beachtet werden?
           if ($setting_reihenfolge == 0) {
@@ -1899,15 +1910,9 @@ function activitytracker_check_blacklist($uid, ?DateTime $checkdate = null)
             $ingame_lastpost = activitytracker_get_lastpost($uid, $ingame_fid);
             //checken ob er im Zeitraum ist
             $isintime = activitytracker_post_in_timeperiod($ingame_lastpost['dateline'], $timeperiod, $checkdate);
-
+            //TODO ? Checken ob einer im archiv ist? 
             //kein post gefunden der im Zeitraum ist
-            //checken ob es einem im Archiv gibt 
             if (!$isintime) {
-              //Umwandeln in DateTime Objekt - damit können wir besser rechnen.
-              $lastpost_datetime = (new DateTime())->setTimestamp($ingame_lastpost['dateline']);
-              $formatted_date = $lastpost_datetime->format('d.m.Y');
-              //berechnen der Tage seit wob
-              // $diff_days = activitytracker_get_days_diff($lastpost_datetime, $checkdate);
               $blacklistarray[$uid]['reason'] = "tooldscenes";
               $blacklistarray[$uid]['tid'] = $ingame_lastpost['tid'];
             }
@@ -1917,25 +1922,15 @@ function activitytracker_check_blacklist($uid, ?DateTime $checkdate = null)
             // erst einmal letzten posts des users aus dem Ingame in Zeitraum X (Blacklist settings) holen, 
             $ingame_lastpost = activitytracker_get_lastpost($uid, $ingame_fid);
             $isintime = false;
-            // hole das datum des letzten posts 
-            $lastpost_timestamp = $ingame_lastpost['dateline'];
-            // umwandeln in DateTime Objekt - damit können wir besser rechnen.
-            $lastpost_dt = (new DateTime())->setTimestamp($lastpost_timestamp);
-            $formatted_date = $lastpost_dt->format('d.m.Y');
             $isintime = activitytracker_check_hastopost($ingame_lastpost['tid'], $uid);
-            //  die differenz zum chcekdate zum postdate
-            // $diff_days = activitytracker_get_days_diff($lastpost_dt, $checkdate);
             // es gibt zwar posts, aber keiner in der frist
             if (!$isintime) {
               //also muss der Charakter auf die Blacklist
               $blacklistarray[$uid]['reason'] = "tooldscenes";
-              // $blacklistarray[$uid]['lastpostdate'] = $formatted_date;
-              // $blacklistarray[$uid]['daysdiff'] = $diff_days;
               $blacklistarray[$uid]['tid'] = $ingame_lastpost['tid'];
             }
           }
         } else {
-          // echo "<h3>Wir schauen pro Szene </h3>";
           //wir schauen pro Szene
           //wir holen uns alle Szenen des Charakters, wo er als Teilnehmer eingetragen ist
           //stattdessen alle posts aus dem ingame holen 
@@ -1943,7 +1938,6 @@ function activitytracker_check_blacklist($uid, ?DateTime $checkdate = null)
 
           //Soll die Reihenfolge beachtet werden?
           if ($setting_reihenfolge == 0) {
-            // echo "<h3>Wir schauen pro Szene ohne Reihenfolge </h3>";
             //Postreihenfolge soll nicht beachtet werden
             $isintime = false;
             //reihenfolge ist egal
@@ -1976,24 +1970,16 @@ function activitytracker_check_blacklist($uid, ?DateTime $checkdate = null)
               }
             }
           } else {
-            // echo "<h3>Wir schauen pro Szene mit Reihenfolge - allposts durchgehen</h3>";
             //wir wollen die Postreihenfolge beachten 
+
             //also gehen wir auch hier alle szenen durch
             foreach ($allposts_ingame as $post) {
-              // echo "in foreach allposts_ingame<br>";
-              //für test
-              $lastpost_datetime = (new DateTime())->setTimestamp($post['lastpost']);
-              $formatted_date = $lastpost_datetime->format('d.m.Y');
-              // echo "<br><b>Post:</b> {$post['tid']} - {$post['subject']} - lastpostdate d. szene $formatted_date  <br>";
-
               $scene_count++;
               $tid = $post['tid'];
               $get_thread = get_thread($tid);
               $hasttopost = activitytracker_check_hastopost($tid, $uid);
-              // echo "hinter activitytracker_check_hastopost -  $hasttopost<br>";
               //er ist dran
               if ($hasttopost) {
-                // echo "in hast to post";
                 //dann checken wir wie lange es her ist, seit dem der letzte post geschrieben wurden ist
                 $lastpost_datetime = (new DateTime())->setTimestamp($get_thread['lastpost']);
                 $formatted_date = $lastpost_datetime->format('d.m.Y');
@@ -2343,7 +2329,6 @@ function activitytracker_mark_to_delete($uid)
 
 /**
  * Die Szenen(User ist als Teilnehmer eingetragen) sammeln, aus einer Liste von Foren (+Childs). 
- * Wenn getthread = true, dann gesamte szenen zurückgeben, sonst alle posts des Users aus dem Ingame zurückgeben
  * @param int uid 
  * @return array mit thread oder postdaten
  */
@@ -2790,65 +2775,6 @@ function activitytracker_check_is_teilnehmer($uid, $fid)
 }
 
 
-/* DOPPELT?
- * Holt alle Szenen aus einer liste von foren, in denen der User als Teilnehmer eingetragen ist.
- * @param int - uid 
- * @param string - einzelne fid oder kommagetrennte liste von fids
- * @return array - Array mit allen Szenen und daten dazu
-
-function activitytracker_get_allthreads($uid, $fid)
-{
-  global $mybb, $db;
-  //aray initialisieren
-  $scenes = array();
-  $excluded = activitytracker_get_excluded_string();
-
-  //parentlist bekommen
-  $fidlist = activitytracker_get_fids_string($fid);
-  $userdata = get_user($uid);
-  $username = $db->escape_string($userdata['username']);
-  $trackertype = $mybb->settings['activitytracker_bl_tracker'];
-  if ($fidlist != "") {
-    if ($trackertype == 'kein') {
-      //kein tracker, es gibt also kein teilnehmer feld, wir schauen also ob es irgendeinen post von dem user gibt
-      $scenequery = $db->write_query("SELECT * FROM `" . TABLE_PREFIX . "posts` WHERE uid = '{$uid}' and fid in ({$fidlist}) {$excluded} GROUP BY tid");
-    } elseif ($trackertype == 'risu') {
-      //dann gibt es einen eintrag mit der uid in der szenentracker tabelle
-      if ($db->table_exists('scenetracker')) {
-        $scenequery = $db->write_query("SELECT * FROM `" . TABLE_PREFIX . "threads` WHERE scenetracker_teilnehmer like '%{$username}%' and fid in ({$fidlist}) {$excluded}");
-      }
-    } elseif ($trackertype == 'sparks2') {
-      if ($db->field_exists("partners", "threads")) {
-        $scenequery = $db->simple_select("threads", "partners", "partners like '%{$username}%'");
-      }
-    } elseif ($trackertype == 'sparks3') {
-      //sichergehen dass der tracker installiert ist
-      if ($db->table_exists("ipt_scenes_partners")) {
-        $scenequery = $db->write_query("SELECT t.* FROM " . TABLE_PREFIX . "ipt_scenes_partners p left join " . TABLE_PREFIX . "threads t on t.tid = p.tid WHERE p.uid='{$uid}'");
-      }
-    } elseif ($trackertype == 'ales') {
-      //sichergehen dass der tracker installiert ist
-      if ($db->field_exists("charas", "threads")) {
-        $scenequery = $db->simple_select("threads", "charas", "charas like '%{$username}%'");
-      }
-    } elseif ($trackertype == 'laras') {
-      if ($db->table_exists("inplayscenes")) {
-        $scenequery = $db->write_query("SELECT t.* FROM " . TABLE_PREFIX . "inplayscenes p left join " . TABLE_PREFIX . "threads t on t.tid = p.tid WHERE partners_username LIKE '%{$username}%'");
-      }
-    }
-  }
-
-  if ($db->num_rows($scenequery) > 0) {
-    while ($szenen = $db->fetch_array($scenequery)) {
-      //speichern
-      $scenes[] = $szenen;
-    }
-  }
-  return $scenes;
-}
-
-*/
-
 /**
  * Testet ob ein Datum in einem gewissen Zeitraum liegt (z.b. ein geschriebener post)
  * @param int - timestamp 
@@ -3195,7 +3121,6 @@ function activitytracker_replace_templates()
   }
 }
 
-
 /**
  * Hier werden Templates gespeichert, die im Laufe der Entwicklung aktualisiert wurden
  * @return array - template daten die geupdatet werden müssen
@@ -3249,6 +3174,7 @@ function activitytracker_updated_templates()
 
   return $update_template;
 }
+
 /**
  * Update Check
  * @return boolean false wenn Plugin nicht aktuell ist
@@ -3430,137 +3356,3 @@ function activitytracker_test()
   // $blarray = activitytracker_check_blacklist();
   // var_dump($blarray); 
 }
-
-
-
-// /**
-//  * TODO: macht es überhaupt sinn, die posts nur aus der Zeitperiode zu holen? oder besser alle? 
-//  * Letzte Posts eines Users, oder Szene (je nach funktionsaufruf) eines bestimmten zeitraums bekommen aus einer liste aus foren (+childs) bekommen
-//  * @param int uid 
-//  * @param string forenliste
-//  * @param string Zeitperiode (z.B. 'days', 'weeks', 'months')
-//  * @return array mit postdaten
-//  */
-// function activitytracker_get_lastposts_timeperiod($uid, $fidlist, $timeperiod, ?DateTime $checkdate = null, $getthread = false)
-// {
-//   global $db, $mybb;
-
-//   // Beiträge sammeln
-//   $posts = array();
-//   // Alle Foren (inkl. Child-Foren) zusammenstellen
-//   $getchilds = activitytracker_get_fids_string($fidlist);
-//   // Alle Posts des Users in diesen Foren holen
-//   if ($getthread) {
-//     // SELECT * FROM `mybb_threads` where scenetracker_user like '%Zoey MacAllan%'
-//     $userdata = get_user($uid);
-//     $username = $db->escape_string($userdata['username']);
-//     $trackertype = $mybb->settings['activitytracker_bl_tracker'];
-//     $trackertype = trim($trackertype);
-//     echo "activitytracker_get_lastposts_timeperiod: trackertype: '{$trackertype}' <br>";
-//     if ($trackertype == 'kein') {
-//       echo "activitytracker_get_lastposts_timeperiod: trackertype ist kein <br>";
-//       // TODO Querie prüfen! 
-
-//       $post_query = $db->write_query("SELECT 
-//               p.*, 
-//               t.lastpost,
-//               t.lastposter,
-//               t.lastposteruid
-//           FROM " . TABLE_PREFIX . "posts p
-//           INNER JOIN (
-//               SELECT tid, MAX(dateline) AS max_date
-//               FROM " . TABLE_PREFIX . "posts
-//               WHERE uid = '{$uid}' 
-//                 AND fid IN ($getchilds)
-//               GROUP BY tid
-//           ) last_posts 
-//               ON p.tid = last_posts.tid AND p.dateline = last_posts.max_date
-//           INNER JOIN " . TABLE_PREFIX . "threads t 
-//               ON t.tid = p.tid
-//           WHERE p.uid = '{$uid}' 
-//             AND p.fid IN ($getchilds)
-//           ORDER BY p.dateline DESC;
-//     ");
-//     } else if ($trackertype == 'risu') {
-//       echo "activitytracker_get_lastposts_timeperiod: Wir risus Szenentracker <br>";
-
-//       //sichergehen dass der tracker installiert ist
-//       if ($db->table_exists('scenetracker')) {
-//         $post_query = $db->simple_select("threads", "*", "scenetracker_user like '%$username%' AND fid IN ($getchilds)");
-//       }
-//     } else if ($trackertype == 'sparks2') {
-//       echo "activitytracker_get_lastposts_timeperiod Wir schauen nach Sparks Szenen <br>";
-//       //sichergehen dass der tracker installiert ist
-//       //postorder wird wie gespeichert? 
-//       if ($db->field_exists("partners", "threads")) {
-//         $post_query = $db->simple_select("threads", "*", "partners like '%$username%' AND fid IN ($getchilds)");
-//       }
-//     } else if ($trackertype == 'sparks3') {
-//       //sichergehen dass der tracker installiert ist
-//       if ($db->table_exists("ipt_scenes_partners")) {
-//         //Wir haben beim 3.0 keine gespeicherte reihenfolge, also gehen wir von der Reihenfolge aus, in der die Partner eingetragen wurden sind
-//         $post_query = $db->write_query("
-//             SELECT sp.*, t.*
-//             FROM " . TABLE_PREFIX . "ipt_scenes_partners sp
-//             INNER JOIN " . TABLE_PREFIX . "threads t ON t.tid = sp.tid
-//             WHERE sp.uid = '{$uid}'
-//             ORDER BY sp.spid DESC
-//         ");
-//         //in array uid, spid, tid
-//       }
-//     } elseif ($trackertype == 'ales') {
-//       //sichergehen dass der tracker installiert ist
-//       if ($db->field_exists("charas", "threads")) {
-//         $post_query = $db->simple_select("threads", "charas", "* like '%$username%' AND fid IN ($getchilds)");
-//       }
-//     } elseif ($trackertype == 'laras') {
-//       //sichergehen dass der tracker installiert ist
-//       if ($db->table_exists("inplayscenes")) {
-//         $post_query = $db->write_query("
-//             SELECT ip.*, t.*
-//             FROM " . TABLE_PREFIX . "inplayscenes ip
-//             INNER JOIN " . TABLE_PREFIX . "threads t ON t.tid = ip.tid
-//             WHERE ip.partners_username like '%$username%'
-//         ");
-//         // $post_query = $db->simple_select("inplayscenes", "*", "partners_username like '%$username%'");
-//       }
-//     }
-//     //TODO CHECK Werden hier wirklich nur die threads geholt, geht es einfacher?
-//     //Wir haben dann immer alle tids von den Szenen wo der useer teilnehmer ist
-//     //posts durchgehen und den thread dazu holen
-//     while ($post = $db->fetch_array($post_query)) {
-//       echo "<br>activitytracker_get_lastposts_timeperiod <b>Post:</b> {$post['tid']} - {$post['subject']} <br>";
-//       $lastpostdate = $db->fetch_field($db->simple_select("threads", "lastpost", "tid = '{$post['tid']}'"), "lastpost");
-//       /*für test*/
-//       $wob_datetime = (new DateTime())->setTimestamp($lastpostdate);
-//       $lastpostdate_format = $wob_datetime->format('d.m.Y');
-//       echo "activitytracker_get_lastposts_timeperiod lastpostdate: {$lastpostdate_format} <br>";
-//       echo "activitytracker_get_lastposts_timeperiod Post lastpost $lastpostdate, timeperiod $timeperiod, checkdate heute:<br>";
-
-//       if (activitytracker_post_in_timeperiod($lastpostdate, $timeperiod, $checkdate)) {
-//         echo "activitytracker_get_lastposts_timeperiod Post ist im Zeitraum <br>";
-//         $posts[] = $post;
-//       } else {
-//         echo "activitytracker_get_lastposts_timeperiod Post ist nicht im Zeitraum <br>";
-//       }
-//     }
-//     echo "activitytracker_get_lastposts_timeperiod <b>Posts nicht im zeitraum:</b><br>";
-//     // var_dump($posts);
-//     echo "<br><b>----------------------------</b><br>";
-//     return $posts;
-//   } else {
-//     $post_query = $db->write_query("SELECT * FROM " . TABLE_PREFIX . "posts
-//         WHERE uid = '{$uid}' 
-//         AND fid IN ($getchilds)
-//         ORDER BY dateline DESC");
-//   }
-
-//   // Jeden Post durchgehen und auf Zeitraum prüfen
-//   while ($post = $db->fetch_array($post_query)) {
-//     if (activitytracker_post_in_timeperiod($post['dateline'], $timeperiod, $checkdate)) {
-//       $posts[] = $post;
-//     }
-//   }
-//   var_dump($posts);
-//   return $posts;
-// }
