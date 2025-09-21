@@ -516,14 +516,14 @@ function activitytracker_settingarray()
     'activitytracker_bl_turnus_particular' => array(
       'title' => 'Blacklist - Bestimmte Monate',
       'description' => 'An welchen Monaten soll die Blacklist erscheinen?',
-      'optionscode' => "multiselect\n1=Januar\n2=Februar\n3=März\n4=April\n5=Mai\n6=Juni\n7=Juli\n8=August\n9=September\n10=Oktober\n11=November\n12=Dezember",
+      'optionscode' => "checkbox\n1=Januar\n2=Februar\n3=März\n4=April\n5=Mai\n6=Juni\n7=Juli\n8=August\n9=September\n10=Oktober\n11=November\n12=Dezember",
       'value' => '1', // Default
       'disporder' => 6
     ),
     //An welchem Tag soll die Blacklist erscheinen?
     'activitytracker_bl_turnus_extrainfo_month' => array(
       'title' => 'Blacklist - Auswertung Liste gleicher Monat?',
-      'description' => "Setze hier <b>\'Ja\'</b>, wenn die Blacklist für den gleichen Monat generiert werden soll. Also wenn du zum Beispiel am 31. die Blacklist veröffentlicht, damit die Blacklist für Juni schaut. Wenn du <b>\'Nein\'</b> setzt, wird die Blacklist für den vorherigen Monat generiert. Also wenn du am 1. Juni die Blacklist veröffentlichst, wird die Blacklist für Mai generiert.",
+      'description' => "Setze hier <b>\'Ja\'</b>, wenn die Blacklist für den gleichen Monat generiert werden soll. Also wenn du zum Beispiel am 31. die Blacklist veröffentlicht, damit die Blacklist für den gleichen Monat prüft. Wenn du <b>\'Nein\'</b> setzt, wird die Blacklist für den vorherigen Monat generiert. Also wenn du am 1. Juni die Blacklist veröffentlichst, wird die Blacklist für Mai generiert.",
       'optionscode' => 'yesno',
       'value' => '0', // Default
       'disporder' => 6
