@@ -8,7 +8,6 @@
  * https://storming-gates.de/member.php?action=profile&uid=39
  * 
  * https://github.com/katjalennartz
- * https://github.com/katjalennartz/
  */
 
 // Fehleranzeige 
@@ -1387,7 +1386,7 @@ function activitytracker_usercp_main()
         //Charakter würde auf der Blacklist stehen
         $charainfo = get_user($uid);
         $linked_charaname = build_profile_link($charainfo['username'], $charainfo['uid']);
-        var_dump($blacklist_array[$uid]);
+       // var_dump($blacklist_array[$uid]);
         switch ($blacklist_array[$uid]['reason']) {
           case 'noingamestart':
             $reason = $lang->ucp_reason_noingamestart;
