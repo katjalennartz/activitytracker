@@ -1178,42 +1178,36 @@ function activititracker_templatearray()
 	</head>
 	<body>
 		{$header}
-			{$usercpnav}
 		<table border="0" cellspacing="{$theme[\'borderwidth\']}" cellpadding="{$theme[\'tablespace\']}" class="tborder">
 			<tr>
-				<td class="thead" colspan="0">
-					<div class="usercp_titlebox">
-						<div class="usercp_titlebox_icon">
-							<img src="{$upload_data[\'icon\']}">
-						</div>
-						<div class="usercp_titlebox_h1">
-							Aktivitätstrackerübersicht von<br> {$username}
-						</div>
-					</div>
-				</td>
-			</tr>
-		</table>	
+				<td valign="top" class="">
 
-		<table border="0" cellspacing="{$theme[\'borderwidth\']}" cellpadding="{$theme[\'tablespace\']}" class="tborder">
-			<tr>
-				<td valign="top" class="usercp_background">
 					<table border="0" cellspacing="{$theme[\'borderwidth\']}" cellpadding="{$theme[\'tablespace\']}" class="tborder">
 						<tr>
-							<td class="trow2">
+							<td class="thead"><strong>Aktivitätstrackerübersicht von<br> {$username}</strong></td>
+						</tr>
+						<tr>
 
+							<td class="trow2">
 								<div class="usercp_content_text">
 									<table width="100%" class="tborder" cellspacing="0" cellpadding="0">
 										<tr><td class="thead"><strong>Aktivitätstracker</strong></td></tr>
 										<tr><td class="trow2">Hier hast du eine Übersicht über deine Charaktere.</td></tr>
+										
 										<tr><td class="trow2">{$activitytracker_bl_ucp}</td></tr>
 									</table>
 
 								</div>
+
 							</td>
 						</tr>
 					</table>
-					
+					{$latest_subscribed}
+					{$latest_threads}
+					{$latest_warnings}
+					{$user_notepad}
 				</td>
+				{$usercpnav}
 			</tr>
 		</table>
 		{$footer}
