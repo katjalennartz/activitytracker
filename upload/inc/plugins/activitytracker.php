@@ -1252,74 +1252,94 @@ function activitytracker_editSettings()
   global $mybb, $db;
 
   // Blacklist task
-  $turnus = $mybb->settings['activitytracker_bl_turnus'];
-  $particular = (int)$mybb->settings['activitytracker_bl_turnus_particular'];
+  $turnus_old = $mybb->settings['activitytracker_bl_turnus'];
+  $turnus_new = $mybb->input['upsetting']['activitytracker_bl_turnus'];
+  if ($turnus_old != $turnus_new) {
+    // $mybb->input
+    $particular = (int)$mybb->settings['activitytracker_bl_turnus_particular'];
 
-  // Default Task - Immer am 1. des Monats ausführen (um 00:01)
-  $task_update_bl = [
-    'minute'   => '1',
-    'hour'     => '0',
-    'day'      => '1',
-    'month'    => '*',
-    'weekday'  => '*',
-    'enabled'  => 1,
-    'nextrun'  => TIME_NOW + 60,
-  ];
+    // Default Task - Immer am 1. des Monats ausführen (um 00:01)
+    $task_update_bl = [
+      'minute'   => '1',
+      'hour'     => '0',
+      'day'      => '1',
+      'month'    => '*',
+      'weekday'  => '*',
+      'enabled'  => 1,
+      'nextrun'  => TIME_NOW + 60,
+    ];
 
-  switch ($turnus) {
-    case 'weekly':
-      // einmal Wöchentlich, immer Montags
-      $task_update_bl['weekday'] = 1; // Montag
-      break;
-    case '2weekly':
-      // alle 2 Wochen, immer Montags, abfangen dafür im Task
-      $task_update_bl['weekday'] = 1;
-      break;
+    switch ($turnus_new) {
+      case 'weekly':
+        // einmal Wöchentlich, immer Montags
+        $task_update_bl['weekday'] = 1; // Montag
+        break;
+      case '2weekly':
+        // alle 2 Wochen, immer Montags, abfangen dafür im Task
+        $task_update_bl['weekday'] = 1;
+        break;
 
-    case 'monthly':
-      // einmal im Monat, je nach Tag 
-      $task_update_bl['day'] = (int)$mybb->settings['activitytracker_bl_turnus_day'];
-      if ($task_update_bl['day'] == 0) {
-        $task_update_bl['day'] = 1; // Fallback auf den 1., falls 0 eingestellt ist
-      }
-      break;
+      case 'monthly':
+        // einmal im Monat, je nach Tag 
+        $task_update_bl['day'] = (int)$mybb->settings['activitytracker_bl_turnus_day'];
+        if ($task_update_bl['day'] == 0) {
+          $task_update_bl['day'] = 1; // Fallback auf den 1., falls 0 eingestellt ist
+        }
+        break;
 
-    case 'particular':
-      // nur in bestimmten Monaten
-      $task_update_bl['day']   = (int)$mybb->settings['activitytracker_bl_turnus_day'];
-      if ($task_update_bl['day'] == 0) {
-        $task_update_bl['day'] = 1; // Fallback auf den 1., falls 0 eingestellt ist
-      }
+      case 'particular':
+        // nur in bestimmten Monaten
+        $task_update_bl['day']   = (int)$mybb->settings['activitytracker_bl_turnus_day'];
+        if ($task_update_bl['day'] == 0) {
+          $task_update_bl['day'] = 1; // Fallback auf den 1., falls 0 eingestellt ist
+        }
 
-      $particular = $mybb->settings['activitytracker_bl_turnus_particular'];
-      $task_update_bl['month'] = $particular;
-      break;
+        $particular = $mybb->settings['activitytracker_bl_turnus_particular'];
+        $task_update_bl['month'] = $particular;
+        break;
 
-    case 'manuel':
-    default:
-      // manuell → Task deaktivieren
-      $task_update_bl['enabled'] = 0;
-      break;
+      case 'manuel':
+      default:
+        // manuell → Task deaktivieren
+        $task_update_bl['enabled'] = 0;
+        break;
+    }
+
+    // Task aktualisieren
+    $db->update_query('tasks', $task_update_bl, "file='at_blacklist'");
+
+    $task_update_bl_autooff = [
+      'minute'   => '59',
+      'hour'     => '23',
+      'day'      => '*',
+      'month'    => '*',
+      'weekday'  => '*',
+      'enabled'  => 1,
+      'nextrun'  => TIME_NOW + 60,
+    ];
   }
-
-  // Task aktualisieren
-  $db->update_query('tasks', $task_update_bl, "file='at_blacklist'");
-
-  $task_update_bl_autooff = [
-    'minute'   => '59',
-    'hour'     => '23',
-    'day'      => '*',
-    'month'    => '*',
-    'weekday'  => '*',
-    'enabled'  => 1,
-    'nextrun'  => TIME_NOW + 60,
-  ];
+  $autoof_old =  $mybb->settings['activitytracker_bl_autooff'];
+  $autoof_new = $mybb->input['upsetting']['activitytracker_bl_autooff'];
 
   //Blacklist Status (automatisches deaktivieren)
-  if ($mybb->settings['activitytracker_bl_autooff'] == 0) {
-    $task_update_bl_autooff['enabled'] = 0;
-  } else {
-    $task_update_bl_autooff['enabled'] = 1;
+  if ($autoof_old != $autoof_new) {
+    // Task aktualisieren
+    if ($autoof_new == 0) {
+      $task_update_bl_autooff['enabled'] = 0;
+    } else {
+      $task_update_bl_autooff['enabled'] = 1;
+    }
+    $db->update_query('tasks', $task_update_bl, "file='at_blacklist_status'");
+  }
+
+  //Blacklist wurde deaktiviert -> View bei usern wieder auf 0 stellen
+  $bl_activ_old =  $mybb->settings['activitytracker_bl_activ'];
+  $bl_activ_new = $mybb->input['upsetting']['activitytracker_bl_activ'];
+  if ($bl_activ_old != $bl_activ_new && $mybb->settings['activitytracker_bl_activ'] == 1) {
+    //alle User die auf der Blacklist stehen, bekommen die View auf 0 gesetzt, damit sie die BL sehen können
+    if ($bl_activ_new == 0) {
+      $db->update_query("users", ["activitytracker_bl_view" => 0], "");
+    }
   }
 }
 
@@ -1725,12 +1745,19 @@ function activitytracker_blacklist_show()
     eval("\$activitytracker_bl_show_main =\"" . $templates->get("activitytracker_bl_show_main") . "\";");
     output_page($activitytracker_bl_show_main);
   }
+
   // blacklist - index meldung ausblenden
   if ($mybb->get_input('action') == "blacklist_hide_info") {
 
+    // Aktuelle User-ID holen
+    $uid = (int)$mybb->user['uid'];
 
-    //für den user auf 0 setzen.
-    redirect("index.php");
+    if ($uid > 0) {
+      // Update der Spalte activitytracker_bl_view
+      $db->update_query("users", ["activitytracker_bl_view" => 0], "uid='{$uid}'");
+    }
+    // Zurück zur Startseite
+    redirect("index.php", "Blacklist-Info wurde ausgeblendet.");
   }
 }
 
