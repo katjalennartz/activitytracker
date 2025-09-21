@@ -7,7 +7,7 @@
  * Risuena im sg
  * https://storming-gates.de/member.php?action=profile&uid=39
  * 
- * https://github.com/katjalennartz
+ * https://github.com/katjalennartz/
  */
 
 // Fehleranzeige 
@@ -213,11 +213,12 @@ function activitytracker_activate()
   include  MYBB_ROOT . "/inc/adminfunctions_templates.php";
   find_replace_templatesets("index", "#" . preg_quote('{$header}') . "#i", '{$header}{$blacklist_index}');
   //einfügen im profil
-  find_replace_templatesets("usercp", "#" . preg_quote('{$latest_subscribed}') . "#i", '{$blacklist_ucp}{$latest_subscribed}');
   find_replace_templatesets("usercp_profile", "#" . preg_quote('{$contactfields}') . "#i", '{$contactfields}{$blacklist_ucp_edit}');
 
   //enable task
-  $db->update_query('tasks', array('enabled' => 1), "file = 'blacklist'");
+  $db->update_query('tasks', array('enabled' => 1), "file = 'at_blacklist'");
+  $db->update_query('tasks', array('enabled' => 1), "file = 'at_blacklist_status'");
+
   //TODO: enable the other tasks
 }
 
@@ -231,7 +232,8 @@ function activitytracker_deactivate()
   // find_replace_templatesets("usercp_profile", "#" . preg_quote('{$blacklist_ucp_ice}') . "#i", '');
 
   // Disable the task
-  $db->update_query('tasks', array('enabled' => 0), "file = 'blacklist'");
+  $db->update_query('tasks', array('enabled' => 0), "file = 'at_blacklist'");
+  $db->update_query('tasks', array('enabled' => 0), "file = 'at_blacklist_status'");
 }
 
 //ADMIN CP STUFF
@@ -1386,7 +1388,7 @@ function activitytracker_usercp_main()
         //Charakter würde auf der Blacklist stehen
         $charainfo = get_user($uid);
         $linked_charaname = build_profile_link($charainfo['username'], $charainfo['uid']);
-       // var_dump($blacklist_array[$uid]);
+        //var_dump($blacklist_array[$uid]);
         switch ($blacklist_array[$uid]['reason']) {
           case 'noingamestart':
             $reason = $lang->ucp_reason_noingamestart;
