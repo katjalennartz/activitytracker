@@ -7,6 +7,7 @@
  * Risuena im sg
  * https://storming-gates.de/member.php?action=profile&uid=39
  * 
+ * https://github.com/katjalennartz
  * https://github.com/katjalennartz/
  */
 
@@ -180,6 +181,16 @@ function activitytracker_uninstall()
   if ($db->table_exists("at_scenereminder")) {
     $db->drop_table("at_scenereminder");
   }
+  if ($db->table_exists("at_blacklist_deletelist")) {
+    $db->drop_table("at_blacklist_deletelist");
+  }
+  if ($db->table_exists("at_reminder")) {
+    $db->drop_table("at_reminder");
+  }
+  if ($db->table_exists("at_bl_lastrun")) {
+    $db->drop_table("at_bl_lastrun");
+  }
+
   //templates entfernen
   $db->delete_query("templates", "title LIKE 'activitytracker_%'");
   // Einstellungen entfernen
@@ -193,9 +204,9 @@ function activitytracker_uninstall()
   $cache->update_tasks();
 
   if ($db->field_exists("activitytracker_bl_view", "users")) {
-    $db->query("ALTER TABLE " . TABLE_PREFIX . "users DROP activitytracker_bl_view_warning");
+    $db->query("ALTER TABLE " . TABLE_PREFIX . "users DROP activitytracker_bl_view");
   }
-  if ($db->field_exists("activitytracker_bl_view", "users")) {
+  if ($db->field_exists("activitytracker_bl_view_info", "users")) {
     $db->query("ALTER TABLE " . TABLE_PREFIX . "users DROP activitytracker_bl_view_info");
   }
   if ($db->field_exists("activitytracker_bl_ice", "users")) {
@@ -370,6 +381,19 @@ function activitytracker_add_db($type = "install")
     `bl_lastrun` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`bl_id`)
     ) ENGINE=MyISAM CHARACTER SET utf8 COLLATE utf8_general_ci;");
+  }
+
+  if (!$db->field_exists("activitytracker_bl_view", "users")) {
+    $db->query("ALTER TABLE `" . TABLE_PREFIX . "users` ADD `activitytracker_bl_view` INT(1) NOT NULL DEFAULT '1'");
+  }
+  if (!$db->field_exists("activitytracker_bl_view_info", "users")) {
+    $db->query("ALTER TABLE `" . TABLE_PREFIX . "users` ADD `activitytracker_bl_view_info` INT(1) NOT NULL DEFAULT '1'");
+  }
+  if (!$db->field_exists("activitytracker_bl_ice", "users")) {
+    $db->query("ALTER TABLE `" . TABLE_PREFIX . "users` ADD `activitytracker_bl_ice` INT(1) NOT NULL DEFAULT '1'");
+  }
+  if (!$db->field_exists("activitytracker_bl_ice_date", "users")) {
+    $db->query("ALTER TABLE `" . TABLE_PREFIX . "users` ADD `activitytracker_bl_ice_date` INT(1) NOT NULL DEFAULT '1'");
   }
 }
 
@@ -1701,17 +1725,13 @@ function activitytracker_blacklist_show()
     eval("\$activitytracker_bl_show_main =\"" . $templates->get("activitytracker_bl_show_main") . "\";");
     output_page($activitytracker_bl_show_main);
   }
-  //Ausgabe der aktuellen Blacklist für User wenn aktiv
+  // blacklist - index meldung ausblenden
+  if ($mybb->get_input('action') == "blacklist_hide_info") {
 
-  //Mods Immer Zugriff 
-  //AUswahl ob aktueller Monat (1.) oder  1. nächster Monat (wer würde nächsten Monat drauf steeh)
-  //Button wenn Benachrichtigung per PN/Mail -> F
 
-  //if alertbutton klick
-  //PN oder Mail?
-  // activitytracker_blacklist_alert($type)
-
-  //aktivieren der Blacklist // evt. ausführen des Tasks
+    //für den user auf 0 setzen.
+    redirect("index.php");
+  }
 }
 
 /**
