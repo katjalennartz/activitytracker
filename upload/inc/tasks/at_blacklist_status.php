@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Blacklist Status - Deaktiviert die Blacklist nach Ablauf der Deadline
  */
@@ -37,9 +38,11 @@ function task_at_blacklist_status($task)
     if ($now >= $expiryTime) {
         //setting speichern
         $db->update_query("settings", ["value" => 0], "name='activitytracker_bl_activ'");
+        $db->update_query("users", ["activitytracker_bl_view" => 0], "");
+
         rebuild_settings();
 
-        add_task_log($task, "Aktivitätsplugin: Blacklist automatisch deaktiviert.");
+        add_task_log($task, "Aktivitätsplugin: Blacklist automatisch deaktiviert. Ansichtseinstellung für User zurückgesetzt.");
     } else {
         add_task_log($task, "Aktivitätsplugin: Blacklist bleibt aktiv (noch nicht abgelaufen).");
     }
