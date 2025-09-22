@@ -1498,6 +1498,9 @@ function activitytracker_blacklist_show()
   global $mybb, $db, $templates, $header, $footer, $theme, $headerinclude,  $lang, $activitytracker_bl_show_main;
   $lang->load('activitytracker');
 
+  //variablen initialisieren
+  $status =  $strokelink = "";
+
   $thisuser = $mybb->user['uid'];
   // if (!$mybb->get_input('action') == "blacklist_at") return;
 
@@ -1738,8 +1741,8 @@ function activitytracker_blacklist_show()
 
     //abwesende User bekommen
     $get_user_away = $db->simple_select("users", "uid", "as_uid = 0 and away = 0 AND uid not in ($activitytracker_excludeduid) AND away = 1", ["order_by" => "username", "order_dir" => "ASC"]);
-    while ($hauptuser = $db->fetch_array($get_user)) {
-    }
+    // while ($hauptuser = $db->fetch_array($get_user)) {
+    // }
 
     eval("\$activitytracker_bl_show_main =\"" . $templates->get("activitytracker_bl_show_main") . "\";");
     output_page($activitytracker_bl_show_main);
