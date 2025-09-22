@@ -1031,9 +1031,8 @@ function activititracker_templatearray()
   global $db;
   //templates anlegen
   $insert_array[] = array(
-    'title'    => 'activitytracker_bl_show_main',
-    'template'  => $db->escape_string('
-        <div class="pm_alert bl-reminder">
+    'title'    => 'activitytracker_bl_index_reminder',
+    'template'  => $db->escape_string('<div class="pm_alert bl-reminder">
 	<div class="bl-reminder__content">
 	{$activitytracker_bl_index_reminder_info}
 	{$activitytracker_bl_index_reminder_bit}
