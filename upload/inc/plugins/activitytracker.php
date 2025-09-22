@@ -2330,7 +2330,7 @@ function activitytracker_check_teilnehmer_allthread($uid, $fid)
         return true;
       }
     }
-  } elseif ($trackertype == 'laras') {
+  } elseif ($trackertype == 'lara') {
     //sichergehen dass der tracker installiert ist
     if (!$db->table_exists("inplayscenes")) {
       if ($db->simple_select("inplayscenes", "partners_username", "partners_username like '%{$username}%''") > 0) {
@@ -2538,7 +2538,7 @@ function activitytracker_get_all_scenes_ingame($uid, $fidlist)
     if ($db->field_exists("charas", "threads")) {
       $post_query = $db->simple_select("threads", "charas", "* like '%$username%' AND fid IN ($getchilds) {$excluded}");
     }
-  } elseif ($trackertype == 'laras') {
+  } elseif ($trackertype == 'lara') {
     //sichergehen dass der tracker installiert ist
     if ($db->table_exists("inplayscenes")) {
       $post_query = $db->write_query("
@@ -2783,7 +2783,7 @@ function activitytracker_get_teilnehmer_singlethread($tid, $uid)
       $teilnehmer = $db->fetch_field($db->simple_select("threads", "charas", "tid='{$tid}'"), "charas");
     }
     $teilnehmer_array = explode(",", trim($teilnehmer));
-  } else if ($trackertype == 'laras') {
+  } else if ($trackertype == 'lara') {
     //sichergehen dass der tracker installiert ist
     if ($db->table_exists("inplayscenes")) {
       $teilnehmer = $db->fetch_field($db->simple_select("inplayscenes", "partners_username", "tid='{$tid}'"), "partners_username");
@@ -2899,7 +2899,7 @@ function activitytracker_check_is_teilnehmer($uid, $fid)
           return true;
         }
       }
-    } elseif ($trackertype == 'laras') {
+    } elseif ($trackertype == 'lara') {
       //sichergehen dass der tracker installiert ist
       if ($db->table_exists("inplayscenes")) {
         if ($db->num_rows($db->simple_select("inplayscenes", "partners_username", "partners_username='{$username}'")) > 0) {
