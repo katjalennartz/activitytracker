@@ -509,7 +509,7 @@ function activitytracker_settingarray()
       'description' => "Diese Auswahl ist nur nötig wenn du bei \'Erscheinen Turnus\' Monat, oder bestimmte Monate ausgewählt hast.<br>
       Bestimmt dann an welchem Tag der Turnus für regelmäßige automatische Ausführung starten.",
       'optionscode' => 'numeric',
-      'value' => '1', // Default
+      'value' => '1', // 2628
       'disporder' => 5
     ),
     //Soll die Blacklist nur in bestimmten Monaten erscheinen?
@@ -2620,7 +2620,7 @@ function activitytracker_get_days_diff($datetime, $checkdate = "today")
   }
 
   //haben wir einen timestamp oder ein datetime objekt? Ist es int, müssen wir es noch umwandelnt
-  if (is_int($datetime)) {
+  if (is_numeric($datetime)) {
     $datetime = (new DateTime())->setTimestamp($datetime);
   }
 
