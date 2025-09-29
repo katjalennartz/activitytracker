@@ -62,7 +62,7 @@ function activitytracker_install()
     'weekday' => '*',
     'nextrun' => TIME_NOW + 60,
     'lastrun' => 0,
-    'enabled' => 0,
+    'enabled' => 1,
     'logging' => 1,
     'locked' => 0,
   ));
@@ -1817,8 +1817,8 @@ function activitytracker_index()
     }
 
     eval("\$activitytracker_bl_index_reminder_bit =\"" . $templates->get("activitytracker_bl_index_reminder_is_bit") . "\";");
+    eval("\$blacklist_index =\"" . $templates->get("activitytracker_bl_index_reminder") . "\";");
   }
-  eval("\$blacklist_index =\"" . $templates->get("activitytracker_bl_index_reminder") . "\";");
   //Reminder Whitelist
 
   //szenenerinnerung
@@ -3078,7 +3078,9 @@ function activitytracker_admin_update_plugin(&$table)
     activitytracker_add_templates("update");
 
     //templates bearbeiten wenn nötig
-    // activitytracker_replace_templates();
+    require_once MYBB_ROOT . "inc/plugins/risuena_updates/risuena_updatefile.php";
+    $update_template_all = activitytracker_updated_templates();
+    risuenaupdatefile_replace_templates($update_template_all);
 
     //Datenbank updaten
     activitytracker_add_db("update");
@@ -3089,48 +3091,8 @@ function activitytracker_admin_update_plugin(&$table)
     //alle Themes bekommen
     $theme_query = $db->simple_select('themes', 'tid, name');
     require_once MYBB_ADMIN_DIR . "inc/functions_themes.php";
-
-    while ($theme = $db->fetch_array($theme_query)) {
-      //wenn im style nicht vorhanden, dann gesamtes css hinzufügen
-      $templatequery = $db->write_query("SELECT * FROM `" . TABLE_PREFIX . "themestylesheets` where tid = '{$theme['tid']}' and name ='activitytracker.css'");
-
-      if ($db->num_rows($templatequery) == 0) {
-        $css = activitytracker_stylesheet($theme['tid']);
-
-        $sid = $db->insert_query("themestylesheets", $css);
-        $db->update_query("themestylesheets", array("cachefile" => "activitytracker.css"), "sid = '" . $sid . "'", 1);
-        update_theme_stylesheet_list($theme['tid']);
-      }
-
-      //testen ob updatestring vorhanden - sonst an css in theme hinzufügen
-      $update_data_all = activitytracker_stylesheet_update();
-      //array durchgehen mit eventuell hinzuzufügenden strings
-      foreach ($update_data_all as $update_data) {
-        //hinzuzufügegendes css
-        $update_stylesheet = $update_data['stylesheet'];
-        //String bei dem getestet wird ob er im alten css vorhanden ist
-        $update_string = $update_data['update_string'];
-        //updatestring darf nicht leer sein
-        if (!empty($update_string)) {
-          //checken ob updatestring in css vorhanden ist - dann muss nichts getan werden
-          $test_ifin = $db->write_query("SELECT stylesheet FROM " . TABLE_PREFIX . "themestylesheets WHERE tid = '{$theme['tid']}' AND name = 'activitytracker.css' AND stylesheet LIKE '%" . $update_string . "%' ");
-          //string war nicht vorhanden
-          if ($db->num_rows($test_ifin) == 0) {
-            //altes css holen
-            $oldstylesheet = $db->fetch_field($db->write_query("SELECT stylesheet FROM " . TABLE_PREFIX . "themestylesheets WHERE tid = '{$theme['tid']}' AND name = 'activitytracker.css'"), "stylesheet");
-            //Hier basteln wir unser neues array zum update und hängen das neue css hinten an das alte dran
-            $updated_stylesheet = array(
-              "cachefile" => $db->escape_string('activitytracker.css'),
-              "stylesheet" => $db->escape_string($oldstylesheet . "\n\n" . $update_stylesheet),
-              "lastmodified" => TIME_NOW
-            );
-            $db->update_query("themestylesheets", $updated_stylesheet, "name='activitytracker.css' AND tid = '{$theme['tid']}'");
-            // echo "In Theme mit der ID {$theme['tid']} wurde CSS hinzugefügt -  $update_string <br>";
-          }
-        }
-        update_theme_stylesheet_list($theme['tid']);
-      }
-    }
+    //stylesheets aktualiseren
+    risuenaupdatefile_update_stylesheet("activitytracker", $update_data_all);
   }
 
   // Zelle mit dem Namen des Themes
@@ -3189,74 +3151,6 @@ function activitytracker_stylesheet($themeid = 1)
   );
   return $css;
 }
-/**
- * Funktion um alte Templates des Plugins bei Bedarf zu aktualisieren
- */
-function activitytracker_replace_templates()
-{
-  global $db;
-  //Wir wollen erst einmal die templates, die eventuellverändert werden müssen
-  $update_template_all = activitytracker_updated_templates();
-  if (!empty($update_template_all)) {
-    //diese durchgehen
-    foreach ($update_template_all as $update_template) {
-      //anhand des templatenames holen
-      $old_template_query = $db->simple_select("templates", "tid, template", "title = '" . $update_template['templatename'] . "'");
-      //in old template speichern
-      while ($old_template = $db->fetch_array($old_template_query)) {
-        //was soll gefunden werden? das mit pattern ersetzen (wir schmeißen leertasten, tabs, etc raus)
-
-        if ($update_template['action'] == 'replace') {
-          $pattern = activitytracker_createRegexPattern($update_template['change_string']);
-        } elseif ($update_template['action'] == 'add') {
-          //bei add wird etwas zum template hinzugefügt, wir müssen also testen ob das schon geschehen ist
-          $pattern = activitytracker_createRegexPattern($update_template['action_string']);
-        } elseif ($update_template['action'] == 'overwrite') {
-          $pattern = activitytracker_createRegexPattern($update_template['change_string']);
-        }
-
-        //was soll gemacht werden -> momentan nur replace 
-        if ($update_template['action'] == 'replace') {
-          //wir ersetzen wenn gefunden wird
-          if (preg_match($pattern, $old_template['template'])) {
-            $template = preg_replace($pattern, $update_template['action_string'], $old_template['template']);
-            $update_query = array(
-              "template" => $db->escape_string($template),
-              "dateline" => TIME_NOW
-            );
-            $db->update_query("templates", $update_query, "tid='" . $old_template['tid'] . "'");
-            // echo ("Template -replace- {$update_template['templatename']} in {$old_template['tid']} wurde aktualisiert <br>");
-          }
-        }
-        if ($update_template['action'] == 'add') { //hinzufügen nicht ersetzen
-          //ist es schon einmal hinzugefügt wurden? nur ausführen, wenn es noch nicht im template gefunden wird
-          if (!preg_match($pattern, $old_template['template'])) {
-            $pattern_rep = activitytracker_createRegexPattern($update_template['change_string']);
-            $template = preg_replace($pattern_rep, $update_template['action_string'], $old_template['template']);
-            $update_query = array(
-              "template" => $db->escape_string($template),
-              "dateline" => TIME_NOW
-            );
-            $db->update_query("templates", $update_query, "tid='" . $old_template['tid'] . "'");
-            // echo ("Template -add- {$update_template['templatename']} in  {$old_template['tid']} wurde aktualisiert <br>");
-          }
-        }
-        if ($update_template['action'] == 'overwrite') { //komplett ersetzen
-          //checken ob das bei change string angegebene vorhanden ist - wenn ja wurde das template schon überschrieben, wenn nicht überschreiben wir das ganze template
-          if (!preg_match($pattern, $old_template['template'])) {
-            $template = $update_template['action_string'];
-            $update_query = array(
-              "template" => $db->escape_string($template),
-              "dateline" => TIME_NOW
-            );
-            $db->update_query("templates", $update_query, "tid='" . $old_template['tid'] . "'");
-            // echo ("Template -overwrite- {$update_template['templatename']} in  {$old_template['tid']} wurde aktualisiert <br>");
-          }
-        }
-      }
-    }
-  }
-}
 
 /**
  * Hier werden Templates gespeichert, die im Laufe der Entwicklung aktualisiert wurden
@@ -3307,7 +3201,6 @@ function activitytracker_updated_templates()
   //   "action" => 'replace',
   //   "action_string" => '{$activitytracker_ucp_filterscenes}'
   // );
-
 
   return $update_template;
 }
@@ -3368,15 +3261,15 @@ function activitytracker_is_updated()
     while ($old_template = $db->fetch_array($old_template_query)) {
       //pattern bilden
       if ($update_template['action'] == 'replace') {
-        $pattern = activitytracker_createRegexPattern($update_template['change_string']);
+        $pattern = risuenaupdatefile_createRegexPattern($update_template['change_string']);
         $check = preg_match($pattern, $old_template['template']);
       } elseif ($update_template['action'] == 'add') {
         //bei add wird etwas zum template hinzugefügt, wir müssen also testen ob das schon geschehen ist
-        $pattern = activitytracker_createRegexPattern($update_template['action_string']);
+        $pattern = risuenaupdatefile_createRegexPattern($update_template['action_string']);
         $check = !preg_match($pattern, $old_template['template']);
       } elseif ($update_template['action'] == 'overwrite') {
         //checken ob das bei change string angegebene vorhanden ist - wenn ja wurde das template schon überschrieben
-        $pattern = activitytracker_createRegexPattern($update_template['change_string']);
+        $pattern = risuenaupdatefile_createRegexPattern($update_template['change_string']);
         $check = !preg_match($pattern, $old_template['template']);
       }
       //testen ob der zu ersetzende string vorhanden ist
