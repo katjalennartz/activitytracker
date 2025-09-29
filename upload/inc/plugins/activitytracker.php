@@ -547,7 +547,7 @@ function activitytracker_settingarray()
     //Zeitraum in Tagen - angenommene Charas
     'activitytracker_bl_duration' => array(
       'title' => 'Blacklist - Zeitraum?',
-      'description' => '<ul><li>Monatlich - letzter Monat (BL im Juni, wurde im Mai gepostet?)</li>
+      'description' => 'In welchem Zeitraum des Ingames( und Archivs) sollen Posts berücksichtigt werden? <ul><li>Monatlich - letzter Monat (BL im Juni, wurde im Mai gepostet?)</li>
       <li>Wöchentlich (BL Montags, wurde Mo-So davor geopostet)</li>
       <li>Tage (Wurde in den letzten X Tagen (seit letztem post in der Szene) gepostet -> Tage im nächsten Feld angebe).</li></ul><b>Achtung:</b> Hier bitte überlegen was sinnvoll ist. Bei der Betrachtung pro Szene, ist es evt. nicht sinnvoll Monat oder Woche auszuwählen (Empfehlung hier, eher: Wurde in den letzten 30 Tagen gepostet)',
       'optionscode' => "radio\nmonth=Monat\nweek=Woche\ndays=Tage",
@@ -1609,7 +1609,7 @@ function activitytracker_blacklist_show()
           $strokelink = "";
 
           //ist der Charakter von dem User der online ist
-          if (activitytracker_is_in_switcher($thisuser)) {
+          if (activitytracker_is_in_switcher($uid)) {
             // UID ist im Array enthalten
             // Alle Strokes dieses Users laden
             $strokes = [];
@@ -1623,7 +1623,7 @@ function activitytracker_blacklist_show()
 
             $now = TIME_NOW;
             // Bedingung prüfen
-            $can_stroke = true;
+            $can_stroke = false;
             if ($stroke_count_allowed > 0 && count($strokes) >= $stroke_count_allowed) {
               // Ältesten Stroke holen
               $first_stroke = reset($strokes);
@@ -1642,6 +1642,8 @@ function activitytracker_blacklist_show()
             // Wenn erlaubt -> Link setzen
             if ($can_stroke) {
               $strokelink = "<a href=\"{$mybb->settings['bburl']}/misc.php?action=blacklist_at&stroke=1&strokeuid={$uid}\">streichen</a>";
+            } else {
+              $strokelink = "";
             }
           } else {
             $strokelink = "";
@@ -1817,7 +1819,10 @@ function activitytracker_index()
     }
 
     eval("\$activitytracker_bl_index_reminder_bit =\"" . $templates->get("activitytracker_bl_index_reminder_is_bit") . "\";");
-    eval("\$blacklist_index =\"" . $templates->get("activitytracker_bl_index_reminder") . "\";");
+    if ($mybb->user['activitytracker_bl_view'] != 0) {
+      eval("\$blacklist_index =\"" . $templates->get("activitytracker_bl_index_reminder") . "\";");
+    }
+    // eval("\$blacklist_index =\"" . $templates->get("activitytracker_bl_index_reminder") . "\";");
   }
   //Reminder Whitelist
 
@@ -1934,19 +1939,19 @@ function activitytracker_check_blacklist($uid, ?DateTime $checkdate = null)
   $checkdate = $checkdate ?? new DateTime('now');
 
   //get settings 
-  $frist_blacklistende = $mybb->settings['activitytracker_bl_deadline'];
-  $frist_blacklistdaystart = $mybb->settings['activitytracker_bl_turnus_day'];
+  $frist_blacklistende = trim($mybb->settings['activitytracker_bl_deadline']);
+  $frist_blacklistdaystart = trim($mybb->settings['activitytracker_bl_turnus_day']);
 
-  $setting_ingame_start = $mybb->settings['activitytracker_bl_ingamestart'];
-  $wobdate = $mybb->settings['activitytracker_bl_wobdate'];
+  $setting_ingame_start = trim($mybb->settings['activitytracker_bl_ingamestart']);
+  $wobdate = trim($mybb->settings['activitytracker_bl_wobdate']);
   //wieviele tage für post
-  $ingame_days = $mybb->settings['activitytracker_bl_duration_days'];
-  $ingame_days_startingame = $mybb->settings['activitytracker_bl_ingamestart_days'];
+  $ingame_days = trim($mybb->settings['activitytracker_bl_duration_days']);
+  $ingame_days_startingame = trim($mybb->settings['activitytracker_bl_ingamestart_days']);
   //Soll es eine gesonderte Frist geben, wenn es keinen Post im Ingame gibt
-  $bl_noscenes = $mybb->settings['activitytracker_bl_noscenes'];
-  $noscenes_days = $mybb->settings['activitytracker_bl_noscenes_days'];
-  $wobdays = $mybb->settings['activitytracker_bl_applicationduration'];
-  $setting_checktype = $mybb->settings['activitytracker_bl_type'];
+  $bl_noscenes = trim($mybb->settings['activitytracker_bl_noscenes']);
+  $noscenes_days = trim($mybb->settings['activitytracker_bl_noscenes_days']);
+  $wobdays = trim($mybb->settings['activitytracker_bl_applicationduration']);
+  $setting_checktype = trim($mybb->settings['activitytracker_bl_type']);
 
   $setting_reihenfolge = $mybb->settings['activitytracker_bl_tracker_order'];
   //aktueller monat wenn month = this 
@@ -2398,6 +2403,7 @@ function activitytracker_is_in_switcher($uid, $tocheck = 0)
     $tocheck = $mybb->user['uid'];
   }
   $uids = activitytracker_get_allchars_as($uid);
+  // die();
   return in_array($tocheck, $uids);
 }
 
@@ -3212,6 +3218,7 @@ function activitytracker_updated_templates()
  */
 function activitytracker_is_updated()
 {
+
   global $db, $mybb;
   $needupdate = 0;
   // if (!$db->field_exists("activitytracker_date", "threads")) {
