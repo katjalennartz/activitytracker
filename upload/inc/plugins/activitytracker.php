@@ -282,10 +282,15 @@ function activitytracker_settings_peek(&$peekers)
     $peekers[] = 'new Peeker($(".setting_activitytracker_bl_duration"), $("#row_setting_activitytracker_bl_duration_days"),"days",true)';
     $peekers[] = 'new Peeker($(".setting_activitytracker_bl_wobdate"), $("#row_setting_activitytracker_bl_duration_days"),"thread",true)';
 
+    $peekers[] = 'new Peeker($(".setting_activitytracker_bl_noscenes"), $("#row_setting_activitytracker_bl_noscenes_days"),"2",true)';
+    $peekers[] = 'new Peeker($(".setting_activitytracker_bl_ingamestart"), $("#row_setting_activitytracker_bl_ingamestart_days"),"1",true)';
+    $peekers[] = 'new Peeker($(".setting_activitytracker_bl_noaway"), $("#row_setting_activitytracker_bl_noaway_days"),"1",true)';
+    $peekers[] = 'new Peeker($(".setting_activitytracker_scenereminder"), $("#row_setting_activitytracker_scenereminder_days"),"1",true)';
 
 
     $peekers[] = 'new Peeker($(".setting_activitytracker_ice"), $("#row_setting_activitytracker_ice_iceplugin, #row_setting_activitytracker_ice_duration, #row_setting_activitytracker_ice_lock, #row_setting_activitytracker_ice_lock_days,#row_setting_activitytracker_ice_type"),/1/,true)';
 
+    
     // ,, ,#row_setting_activitytracker_bl_deadline",#row_setting_activitytracker_bl_autooff,#row_setting_activitytracker_bl_duration,#row_setting_activitytracker_bl_duration_days,#row_setting_activitytracker_bl_type, #row_setting_activitytracker_bl_noscenes,#row_setting_activitytracker_bl_noscenes_days,#row_setting_activitytracker_bl_applicationduration,#row_setting_activitytracker_bl_einreichung,#row_setting_activitytracker_bl_bewerberfid,#row_setting_activitytracker_bl_ingamestart,#row_setting_activitytracker_bl_ingamestart_days,#row_setting_activitytracker_bl_wobdate,#row_setting_activitytracker_bl_wobdate_thread,#row_setting_activitytracker_bl_away,#row_setting_activitytracker_bl_noaway,#row_setting_activitytracker_bl_noaway_days,#row_setting_activitytracker_bl_reminder,#row_setting_activitytracker_bl_reminder_isonbl,#row_setting_activitytracker_bl_alert,#row_setting_activitytracker_bl_alerttype,#row_setting_activitytracker_bl_reminder_stroke,#row_setting_activitytracker_bl_reminder_stroke_count,#row_setting_activitytracker_bl_reminder_stroke_reset,#row_setting_activitytracker_bl_tracker,#row_setting_activitytracker_bl_tracker_order,#row_setting_activitytracker_fidexcluded,#row_setting_activitytracker_tidexcluded
 
     // $peekers[] = 'new Peeker($(".activitytracker_bl_noaway"), $("#activitytracker_bl_noaway_days"),/1/,true)';
@@ -598,7 +603,7 @@ function activitytracker_settingarray()
 
     //Keine aktuelle Ingameszene Zeitraum
     'activitytracker_bl_noscenes_days' => array(
-      'title' => 'Blacklist - geschlossene Szene -> gesonderter Zeitraum"',
+      'title' => 'Blacklist - geschlossene Szene -> gesonderter Zeitraum',
       'description' => 'Wieviele Tage hat ein Charakter Zeit eine neue Szene im Ingamezeitraum zu öffnen bevor er auf der Blacklist landet? (ausgehend vom letzten Post der geschlossenen Szenen)',
       'optionscode' => 'numeric',
       'value' => '1', // Default
@@ -670,7 +675,7 @@ function activitytracker_settingarray()
       'value' => '1', // Default
       'disporder' => 21
     ),
-    //3 Monatsregel?
+    //Abwesenheits Monatsregel?
     'activitytracker_bl_noaway' => array(
       'title' => 'Blacklist - Abwesenheit Sonderregel?',
       'description' => 'Gibt es einen Zeitraum, bei dem der Charakter auf die BL kommt, auch wenn er abwesend ist?',
@@ -678,7 +683,7 @@ function activitytracker_settingarray()
       'value' => '1', // Default
       'disporder' => 22
     ),
-    //3 Monatsregel - Zeitraum?
+    //Abwesenheits Monatsregel - Zeitraum?
     'activitytracker_bl_noaway_days' => array(
       'title' => 'Blacklist - Sonderregel - Zeitraum?',
       'description' => 'Nach wievielen Tagen soll die Abwesenheit nicht mehr als Schutz gelten? 0 Wenn es keine Begrenzung gibt.',
@@ -975,7 +980,7 @@ function activitytracker_settingarray()
     //Szenenreminder
     'activitytracker_scenereminder' => array(
       'title' => 'Szenenerinnerung',
-      'description' => 'Soll der User erinnert werden, wenn er andere X Tage warten lässt? ',
+      'description' => 'Soll der User erinnert werden, wenn er andere X Tage warten lässt? Wird Risuenas Szenentracker genutzt, wird hier empfohlen auf Nein zu stellen, der Tracker hat das schon integriert.',
       'optionscode' => 'yesno',
       'value' => '1', // Default
       'disporder' => 58
@@ -1076,7 +1081,8 @@ function activititracker_templatearray()
 						<td class="trow2">
 							<div class="at-blacklistinfo">Die Blacklist wird immer am {$frist_blacklistdaystart}. veröffentlicht. Du hast {$frist_bl_deadline_days_to_post} Tage Zeit bis zur Löschung.</div>
 							<div class="at-blacklist">
-								{$activitytracker_bl_show_main_userbit}         
+								{$activitytracker_bl_show_main_userbit}
+                {$activitytracker_bl_show_main_awayuserbit}      
 							</div>
 						</td>
 					</tr>
@@ -1107,6 +1113,23 @@ function activititracker_templatearray()
 	</div>
 	<div class="at-blacklist__options">{$activitytracker_bl_show_main_useroptions}{$activitytracker_bl_show_main_modoptions}</div>
 </div>'),
+    'sid'    => '-2',
+    'version'  => '0',
+    'dateline'  => TIME_NOW
+  );
+
+  $insert_array[] = array(
+    'title'    => 'activitytracker_bl_show_main_awayuserbit',
+    'template'  => $db->escape_string('<div class="at-blacklist__user">
+        <div class="at-blacklist__userinfos">
+          <h2>{$username}</h2>
+          <i>abwesend von {$away_from} bis {$away_to}</i>
+        </div>
+        <div class="at-blacklist__charainfors">
+          {$away_chars}
+          {$modinfo}
+        </div>
+      </div>'),
     'sid'    => '-2',
     'version'  => '0',
     'dateline'  => TIME_NOW
@@ -1149,6 +1172,7 @@ function activititracker_templatearray()
   $insert_array[] = array(
     'title'    => 'activitytracker_bl_show_main_useroptions',
     'template'  => $db->escape_string('<div class="at-blacklist__useroptions">
+    <b>Optionen</b>
 	{$status} 
 	{$strokelink}
 	{$marktodel}
@@ -1725,13 +1749,19 @@ function activitytracker_blacklist_show()
             foreach ($threads as $tid) {
               $threadinfo = get_thread($tid);
               $postinfo = $db->fetch_array($db->simple_select("posts", "*", "tid = '$tid' AND uid = '$uid'", array('order_by' => 'dateline', 'order_dir' => 'desc', 'limit' => 1)));
-              $readable_date = my_date('d.m.Y', $postinfo['dateline']);
+              if (!empty($postinfo)) {
+                //der user hat in der szene schon einmal gepostet
+                $readable_date = my_date('d.m.Y', $postinfo['dateline']);
+              } else {
+                //der user hat noch nie in der Szene gepostet
+                $readable_date = "kein Post";
+              }
+
               // array("limit" => 1)
               $threadlink = "<a href=\"showthread.php?tid=" . $tid . "\">" . htmlspecialchars_uni($threadinfo['subject']) . "</a> ({$readable_date})<br>";
               eval("\$activitytracker_bl_show_main_charabit_threads .=\"" . $templates->get("activitytracker_bl_show_main_charabit_threads") . "\";");
             }
           }
-          //TODO ausgabe status
           eval("\$activitytracker_bl_show_main_charabit .=\"" . $templates->get("activitytracker_bl_show_main_charabit") . "\";");
         }
       }
@@ -1742,9 +1772,49 @@ function activitytracker_blacklist_show()
     }
 
     //abwesende User bekommen
-    $get_user_away = $db->simple_select("users", "uid", "as_uid = 0 and away = 0 AND uid not in ($activitytracker_excludeduid) AND away = 1", ["order_by" => "username", "order_dir" => "ASC"]);
-    // while ($hauptuser = $db->fetch_array($get_user)) {
-    // }
+    $activitytracker_bl_show_main_awayuserbit = "";
+
+    $get_user_away = $db->simple_select("users", "*", "as_uid = 0 AND uid not in ($activitytracker_excludeduid) AND away = 1", ["order_by" => "username", "order_dir" => "ASC"]);
+    while ($awayhauptuser = $db->fetch_array($get_user_away)) {
+      $username = "";
+      $away_from = "";
+      $away_to = "";
+      $away_chars = "";
+      $modinfobl = "";
+
+      $username = build_profile_link($awayhauptuser['username'], $awayhauptuser['uid']);
+      $away_date = $awayhauptuser['awaydate'];
+      $away_from = date("d.m.Y", $away_date);
+
+      //alle user der Charas durchgehen 
+      $uidarray = activitytracker_get_allchars_as($awayhauptuser['uid']);
+      foreach ($uidarray as $uid) {
+        $charainfo = get_user($uid);
+        $away_chars .= build_profile_link($charainfo['username'], $charainfo['uid']) . ", ";
+
+        //schauen ob sie auf der Blacklist stehen würden
+        $blquery = $db->simple_select("at_blacklist", "*", "uid = '$uid' AND bldate like '{$timestr}%'");
+        if ($db->num_rows($blquery) > 0) {
+          $modinfobl .= build_profile_link($charainfo['username'], $charainfo['uid']) . ", ";
+        }
+      }
+      //die letzten 2 Zeichen abschneiden (Komma und Leerzeichen)
+      $away_chars = substr($away_chars, 0, -2);
+      $modinfobl = substr($modinfobl, 0, -2);
+
+      $away_return = $awayhauptuser['returndate'];
+      $dt = DateTime::createFromFormat("j-n-Y", $away_return);
+      $away_to =  $dt->format("d.m.Y");
+      if ($mybb->usergroup['canmodcp'] == 1) {
+        if ($modinfobl != "") {
+          $modinfobl = "<br><span class='at-blacklist__awaymodinfo'><b>(Modinfo) stände auf der Blacklist:</b> {$modinfobl}</span>";
+        }
+      } else {
+        $modinfobl = "";
+      }
+
+      eval("\$activitytracker_bl_show_main_awayuserbit .=\"" . $templates->get("activitytracker_bl_show_main_awayuserbit") . "\";");
+    }
 
     eval("\$activitytracker_bl_show_main =\"" . $templates->get("activitytracker_bl_show_main") . "\";");
     output_page($activitytracker_bl_show_main);
@@ -2064,7 +2134,11 @@ function activitytracker_check_blacklist($uid, ?DateTime $checkdate = null)
             // erst einmal letzten posts des users aus dem Ingame in Zeitraum X (Blacklist settings) holen, 
             $ingame_lastpost = activitytracker_get_lastpost($uid, $ingame_fid);
             $isintime = false;
-            $isintime = activitytracker_check_hastopost($ingame_lastpost['tid'], $uid);
+            if (!empty($ingame_lastpost)) {
+              $isintime = activitytracker_check_hastopost($ingame_lastpost['tid'], $uid);
+            } else {
+              $isintime = false;
+            }
             // es gibt zwar posts, aber keiner in der frist
             if (!$isintime) {
               //also muss der Charakter auf die Blacklist
@@ -2378,6 +2452,9 @@ function activitytracker_get_lastthread($uid, $fidlist)
 function activitytracker_get_lastpost($uid, $fidlist)
 {
   global $db, $mybb;
+  if ($fidlist == "") {
+    error("Im ACP wurden keine Foren für den Tracker angegeben.", "Fehlende Einstellung");
+  }
   //array initialisieren
   $post = array();
   //liste aller foren bekommen
@@ -3009,7 +3086,11 @@ function activitytracker_check_strokeinfo($uid, ?DateTime $checkdate = null)
   $ingame_lastpost = activitytracker_get_lastpost($uid, $ingame_fid);
   //checken ob er im Zeitraum ist
   $timeperiod = trim($mybb->settings['activitytracker_bl_duration']);
-  $post_isintime = activitytracker_post_in_timeperiod($ingame_lastpost['dateline'], $timeperiod, $checkdate);
+  if (!empty($ingame_lastpost)) {
+    $post_isintime = activitytracker_post_in_timeperiod($ingame_lastpost['dateline'], $timeperiod, $checkdate);
+  } else {
+    $post_isintime = false;
+  }
   if ($post_isintime) {
     $check_array['class'] = "bl-strokeuser";
     $threadlink = "<a href=\"" . get_thread_link($ingame_lastpost['tid']) . "\">{$ingame_lastpost['subject']}</a>";
