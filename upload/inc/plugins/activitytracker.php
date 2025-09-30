@@ -222,7 +222,7 @@ function activitytracker_activate()
 {
   global $db;
   include  MYBB_ROOT . "/inc/adminfunctions_templates.php";
-  find_replace_templatesets("index", "#" . preg_quote('{$header}') . "#i", '{$header}{$blacklist_index}');
+  find_replace_templatesets("index", "#" . preg_quote('{$header}') . "#i", '{$header}{$blacklist_index}{$blacklist_index_wouldbe}');
   //einfügen im profil
   find_replace_templatesets("usercp_profile", "#" . preg_quote('{$contactfields}') . "#i", '{$contactfields}{$blacklist_ucp_edit}');
 
@@ -238,6 +238,8 @@ function activitytracker_deactivate()
   global $db;
   include  MYBB_ROOT . "/inc/adminfunctions_templates.php";
   find_replace_templatesets("index", "#" . preg_quote('{$blacklist_index}') . "#i", '');
+  find_replace_templatesets("index", "#" . preg_quote('{$blacklist_index_wouldbe}') . "#i", '');
+
   //im profil noch entfernen
   find_replace_templatesets("usercp", "#" . preg_quote('{$blacklist_ucp}') . "#i", '');
   // find_replace_templatesets("usercp_profile", "#" . preg_quote('{$blacklist_ucp_ice}') . "#i", '');
@@ -1040,8 +1042,8 @@ function activititracker_templatearray()
     'title'    => 'activitytracker_bl_index_reminder_wouldbe',
     'template'  => $db->escape_string('<div class="pm_alert bl-reminder">
 	<div class="bl-reminder__content">
-	{$activitytracker_bl_index_reminder_info}
-	{$activitytracker_bl_index_reminder_bit}
+	{$activitytracker_bl_index_reminder_infowould}
+	{$activitytracker_bl_index_reminder_bitwould}
 	</div>
 	<div class="bl-reminder__options">
 		<a href="{$mybb->settings[\'bburl\']}/misc.php?action=blacklist_hide_info_wouldbe">[ausblenden]</a>
@@ -1576,7 +1578,7 @@ function activitytracker_blacklist_show()
     if (trim($mybb->settings['activitytracker_bl_alert']) == 'button') {
       eval("\$bl_sendmail =\"" . $templates->get("activitytracker_bl_show_main_alertbutton") . "\";");
     }
-    
+
     // $frist_blacklistende = $mybb->settings['activitytracker_bl_deadline'];
     $frist_blacklistdaystart = $mybb->settings['activitytracker_bl_turnus_day'];
     $frist_bl_deadline_days_to_post = $mybb->settings['activitytracker_bl_deadline'];
@@ -1874,7 +1876,7 @@ function activitytracker_blacklist_show()
 
     if ($uid > 0) {
       // Update der Spalte activitytracker_bl_view
-      $db->update_query("users", ["	activitytracker_bl_view_info" => 0], "uid='{$uid}'");
+      $db->update_query("users", ["activitytracker_bl_view_info" => 0], "uid='{$uid}'");
     }
     // Zurück zur Startseite
     redirect("index.php", "Blacklist-Warnung wurde ausgeblendet.");
@@ -1956,8 +1958,6 @@ function activitytracker_index()
     foreach ($uidarray as $uid) {
       //für jeden Charakter des Users Testen ob er auf der Blacklist stehen würde
       $blacklist_array = activitytracker_check_blacklist($uid);
-      echo "$uid<br>";
-      var_dump($blacklist_array);
       if (!empty($blacklist_array)) {
         $wouldbe = true;
 
