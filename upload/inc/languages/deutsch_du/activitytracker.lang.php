@@ -13,6 +13,8 @@ $l['blacklist_status_active'] = '<a href="misc.php?action=blacklist_at">aktiv</a
 $l['blacklist_status_inactive'] = 'nicht aktiv';
 
 $l['activitytracker_bl_index_reminder_info'] = 'Die aktuelle <a href="misc.php?action=blacklist_at">Blacklist</a> ist draußen.';
+$l['activitytracker_bl_index_reminder_info_wouldbe'] = 'Du würdest auf der nächsten Blacklist stehen:';
+
 $l['activitytracker_bl_index_reminder_warning'] = 'steht auf der Blacklist.';
 $l['activitytracker_bl_index_reminder_warning_multi'] = 'stehen auf der Blacklist.';
 
