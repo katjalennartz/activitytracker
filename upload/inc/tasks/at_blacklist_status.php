@@ -39,6 +39,7 @@ function task_at_blacklist_status($task)
         //setting speichern
         $db->update_query("settings", ["value" => 0], "name='activitytracker_bl_activ'");
         $db->update_query("users", ["activitytracker_bl_view" => 0], "");
+        $db->update_query("users", ["activitytracker_bl_view_info" => 0], "");
 
         rebuild_settings();
 
