@@ -255,7 +255,6 @@ function activitytracker_settings_change()
   global $db, $mybb, $activitytracker_settings_peeker;
 
   $result = $db->simple_select("settinggroups", "gid", "name='activitytracker'", array("limit" => 1));
-  // echo "in peeker";
   $group = $db->fetch_array($result);
   $activitytracker_settings_peeker = ($mybb->input['gid'] == $group['gid']) && ($mybb->request_method != 'post');
 }
@@ -265,7 +264,6 @@ $plugins->add_hook("admin_settings_print_peekers", "activitytracker_settings_pee
 function activitytracker_settings_peek(&$peekers)
 {
   global $activitytracker_settings_peeker;
-  // echo "in peeker";
 
   if ($activitytracker_settings_peeker) {
 
@@ -276,8 +274,6 @@ function activitytracker_settings_peek(&$peekers)
     $peekers[] = 'new Peeker($(".setting_activitytracker_wl"), $("#row_setting_activitytracker_wl_activ,#row_setting_activitytracker_wl_guest, #row_setting_activitytracker_wl_deadline, #row_setting_activitytracker_wl_turnus_day, #row_setting_activitytracker_wl_turnus,#row_setting_activitytracker_wl_autooff,#row_setting_activitytracker_wl_regulations, #row_setting_activitytracker_wl_regulations_type, #row_setting_activitytracker_wl_regulations_days, #row_setting_activitytracker_wl_reminder"),/1/,true)';
 
     $peekers[] = 'new Peeker($(".setting_activitytracker_bl_turnus"), $("#row_setting_activitytracker_bl_turnus_particular"),"particular",true)';
-    // $peekers[] = 'new Peeker($(".setting_activitytracker_bl_turnus"), $("#row_setting_activitytracker_bl_turnus_day"),"monthly",true)';
-    // $peekers[] = 'new Peeker($(".setting_activitytracker_bl_turnus"), $("#row_setting_activitytracker_bl_turnus_day"),"particular",true)';
 
     $peekers[] = 'new Peeker($(".setting_activitytracker_bl_duration"), $("#row_setting_activitytracker_bl_duration_days"),"days",true)';
     $peekers[] = 'new Peeker($(".setting_activitytracker_bl_wobdate"), $("#row_setting_activitytracker_bl_duration_days"),"thread",true)';
@@ -287,18 +283,7 @@ function activitytracker_settings_peek(&$peekers)
     $peekers[] = 'new Peeker($(".setting_activitytracker_bl_noaway"), $("#row_setting_activitytracker_bl_noaway_days"),"1",true)';
     $peekers[] = 'new Peeker($(".setting_activitytracker_scenereminder"), $("#row_setting_activitytracker_scenereminder_days"),"1",true)';
 
-
     $peekers[] = 'new Peeker($(".setting_activitytracker_ice"), $("#row_setting_activitytracker_ice_iceplugin, #row_setting_activitytracker_ice_duration, #row_setting_activitytracker_ice_lock, #row_setting_activitytracker_ice_lock_days,#row_setting_activitytracker_ice_type"),/1/,true)';
-
-    
-    // ,, ,#row_setting_activitytracker_bl_deadline",#row_setting_activitytracker_bl_autooff,#row_setting_activitytracker_bl_duration,#row_setting_activitytracker_bl_duration_days,#row_setting_activitytracker_bl_type, #row_setting_activitytracker_bl_noscenes,#row_setting_activitytracker_bl_noscenes_days,#row_setting_activitytracker_bl_applicationduration,#row_setting_activitytracker_bl_einreichung,#row_setting_activitytracker_bl_bewerberfid,#row_setting_activitytracker_bl_ingamestart,#row_setting_activitytracker_bl_ingamestart_days,#row_setting_activitytracker_bl_wobdate,#row_setting_activitytracker_bl_wobdate_thread,#row_setting_activitytracker_bl_away,#row_setting_activitytracker_bl_noaway,#row_setting_activitytracker_bl_noaway_days,#row_setting_activitytracker_bl_reminder,#row_setting_activitytracker_bl_reminder_isonbl,#row_setting_activitytracker_bl_alert,#row_setting_activitytracker_bl_alerttype,#row_setting_activitytracker_bl_reminder_stroke,#row_setting_activitytracker_bl_reminder_stroke_count,#row_setting_activitytracker_bl_reminder_stroke_reset,#row_setting_activitytracker_bl_tracker,#row_setting_activitytracker_bl_tracker_order,#row_setting_activitytracker_fidexcluded,#row_setting_activitytracker_tidexcluded
-
-    // $peekers[] = 'new Peeker($(".activitytracker_bl_noaway"), $("#activitytracker_bl_noaway_days"),/1/,true)';
-
-    // $peekers[] = 'new Peeker($(".activitytracker_bl_ice"), $("#activitytracker_bl_iceduration"),/1/,true)';
-    // $peekers[] = 'new Peeker($(".activitytracker_bl_ice"), $("#activitytracker_bl_icelock"),/1/,true)';
-    // $peekers[] = 'new Peeker($(".activitytracker_bl_icelock"), $("#activitytracker_bl_icelock_days"),/1/,true)';
-    // $peekers[] = 'new Peeker($(".activitytracker_bl_ice"), $("#activitytracker_bl_icenumber"),/1/,true)';
   }
 }
 
@@ -1051,6 +1036,22 @@ function activititracker_templatearray()
     'version'  => '0',
     'dateline'  => TIME_NOW
   );
+  $insert_array[] = array(
+    'title'    => 'activitytracker_bl_index_reminder_wouldbe',
+    'template'  => $db->escape_string('<div class="pm_alert bl-reminder">
+	<div class="bl-reminder__content">
+	{$activitytracker_bl_index_reminder_info}
+	{$activitytracker_bl_index_reminder_bit}
+	</div>
+	<div class="bl-reminder__options">
+		<a href="{$mybb->settings[\'bburl\']}/misc.php?action=blacklist_hide_info_wouldbe">[ausblenden]</a>
+	</div>
+</div>
+    '),
+    'sid'    => '-2',
+    'version'  => '0',
+    'dateline'  => TIME_NOW
+  );
 
   $insert_array[] = array(
     'title'    => 'activitytracker_bl_index_reminder_is_bit',
@@ -1071,7 +1072,6 @@ function activititracker_templatearray()
 	{$header}
 	<table width="100%" border="0" align="center">
 		<tr>
-			{$usercpnav}
 			<td valign="top">
 				<table border="0" cellspacing="{$theme[\'borderwidth\']}" cellpadding="{$theme[\'tablespace\']}" class="tborder">
 					<tr>
@@ -1079,7 +1079,9 @@ function activititracker_templatearray()
 					</tr>
 					<tr>
 						<td class="trow2">
-							<div class="at-blacklistinfo">Die Blacklist wird immer am {$frist_blacklistdaystart}. veröffentlicht. Du hast {$frist_bl_deadline_days_to_post} Tage Zeit bis zur Löschung.</div>
+							<div class="at-blacklistinfo">Die Blacklist wird immer am {$frist_blacklistdaystart}. veröffentlicht. Du hast {$frist_bl_deadline_days_to_post} Tage Zeit bis zur Löschung.
+              {$bl_sendmail}
+              </div>
 							<div class="at-blacklist">
 								{$activitytracker_bl_show_main_userbit}
                 {$activitytracker_bl_show_main_awayuserbit}      
@@ -1192,6 +1194,17 @@ function activititracker_templatearray()
     'dateline'  => TIME_NOW
   );
 
+
+  $insert_array[] = array(
+    'title'    => 'activitytracker_bl_show_main_alertbutton',
+    'template'  => $db->escape_string('<div class="at-blacklist__alertbutton"><form method="post">
+          <button type="submit" name="alertuser">User benachrichtigen</button>
+	</form></div>'),
+    'sid'    => '-2',
+    'version'  => '0',
+    'dateline'  => TIME_NOW
+  );
+
   $insert_array[] = array(
     'title'    => 'activitytracker_bl_ucp',
     'template'  => $db->escape_string('Die Blacklist ist gerade {$bl_status}. Sie erscheint {$bl_turnus}.
@@ -1250,10 +1263,6 @@ function activititracker_templatearray()
 							</td>
 						</tr>
 					</table>
-					{$latest_subscribed}
-					{$latest_threads}
-					{$latest_warnings}
-					{$user_notepad}
 				</td>
 				{$usercpnav}
 			</tr>
@@ -1341,6 +1350,7 @@ function activitytracker_editSettings()
       'nextrun'  => TIME_NOW + 60,
     ];
   }
+
   $autoof_old =  $mybb->settings['activitytracker_bl_autooff'];
   $autoof_new = $mybb->input['upsetting']['activitytracker_bl_autooff'];
 
@@ -1358,10 +1368,11 @@ function activitytracker_editSettings()
   //Blacklist wurde deaktiviert -> View bei usern wieder auf 0 stellen
   $bl_activ_old =  $mybb->settings['activitytracker_bl_activ'];
   $bl_activ_new = $mybb->input['upsetting']['activitytracker_bl_activ'];
-  if ($bl_activ_old != $bl_activ_new && $mybb->settings['activitytracker_bl_activ'] == 1) {
-    //alle User die auf der Blacklist stehen, bekommen die View auf 0 gesetzt, damit sie die BL sehen können
+  if (($bl_activ_old != $bl_activ_new) && $mybb->settings['activitytracker_bl_activ'] == 1) {
+    //alle User, bekommen die settings für die benachrichtigungen wieder auf 1 gesetzt
     if ($bl_activ_new == 0) {
-      $db->update_query("users", ["activitytracker_bl_view" => 0], "");
+      $db->update_query("users", ["activitytracker_bl_view" => 1], "");
+      $db->update_query("users", ["activitytracker_bl_view_info" => 1], "");
     }
   }
 }
@@ -1523,7 +1534,7 @@ function activitytracker_blacklist_show()
   $lang->load('activitytracker');
 
   //variablen initialisieren
-  $status =  $strokelink = "";
+  $status =  $strokelink = $bl_sendmail = $activitytracker_bl_show_main_userbit = $activitytracker_bl_show_main_awayuserbit = $frist_blacklistdaystart = $frist_bl_deadline_days_to_post = "";
 
   $thisuser = $mybb->user['uid'];
   // if (!$mybb->get_input('action') == "blacklist_at") return;
@@ -1553,10 +1564,19 @@ function activitytracker_blacklist_show()
       activitytracker_mark_to_delete($markuid);
     }
 
+    if ($mybb->get_input('alertuser')) {
+      activitytracker_blacklist_alert();
+    }
+
     //page bauen
     $page = "";
     add_breadcrumb("Blacklist", "misc.php?action=blacklist_at");
 
+
+    if (trim($mybb->settings['activitytracker_bl_alert']) == 'button') {
+      eval("\$bl_sendmail =\"" . $templates->get("activitytracker_bl_show_main_alertbutton") . "\";");
+    }
+    
     // $frist_blacklistende = $mybb->settings['activitytracker_bl_deadline'];
     $frist_blacklistdaystart = $mybb->settings['activitytracker_bl_turnus_day'];
     $frist_bl_deadline_days_to_post = $mybb->settings['activitytracker_bl_deadline'];
@@ -1579,9 +1599,9 @@ function activitytracker_blacklist_show()
       error_no_permission();
     }
 
-    //alle Hauptaccounts bekommen - die nicht abwesend sind
+    //alle Hauptaccounts bekommen 
     $activitytracker_bl_show_main_userbit = "";
-    $get_user = $db->simple_select("users", "uid", "as_uid = 0 and away = 0 AND uid not in ($activitytracker_excludeduid) AND away = 0", ["order_by" => "username", "order_dir" => "ASC"]);
+    $get_user = $db->simple_select("users", "uid", "as_uid = 0 AND uid not in ($activitytracker_excludeduid)", ["order_by" => "username", "order_dir" => "ASC"]);
     while ($hauptuser = $db->fetch_array($get_user)) {
       $activitytracker_bl_show_main_modoptions = "";
 
@@ -1611,6 +1631,7 @@ function activitytracker_blacklist_show()
       }
 
       $activitytracker_bl_show_main_charabit = "";
+      $toolongaway = false;
       //Charas durchgehen und schauen ob einer auf der BL steht.
       foreach ($uidarray as $uid) {
         $strokeinfo = "";
@@ -1702,13 +1723,17 @@ function activitytracker_blacklist_show()
           $timestr = date('Y-m', strtotime('first day of last month'));
         }
 
-        $blquery = $db->simple_select("at_blacklist", "*", "uid = '$uid' AND bldate like '{$timestr}%' and away = '0'");
+        $blquery = $db->simple_select("at_blacklist", "*", "uid = '$uid' AND bldate like '{$timestr}%' and away != '1'");
         if ($db->num_rows($blquery) > 0) {
+
           //User ist auf der BL
           $isonbl = 1;
           $blinfo = $db->fetch_array($blquery);
           $linked_charaname = build_profile_link($blinfo['username'], $blinfo['uid']);
-
+          //User ist abwesend, aber über dem erlaubten Zeitraum
+          if ($blinfo['away'] == '-1') {
+            $toolongaway = true;
+          }
           $status = $blinfo['status'];
 
           switch ($blinfo['reason']) {
@@ -1767,6 +1792,12 @@ function activitytracker_blacklist_show()
       }
 
       if ($isonbl) {
+        //ist abwesend wird aber nicht mehr geschützt
+        if ($toolongaway) {
+          $toolongaway_info = "<span class='at-blacklist__charatoolongaway'>erlaubte Abwesenheit überschritten.</span>";
+        } else {
+          $toolongaway_info = "";
+        }
         eval("\$activitytracker_bl_show_main_userbit .=\"" . $templates->get("activitytracker_bl_show_main_userbit") . "\";");
       }
     }
@@ -1833,6 +1864,21 @@ function activitytracker_blacklist_show()
     // Zurück zur Startseite
     redirect("index.php", "Blacklist-Info wurde ausgeblendet.");
   }
+
+
+  // blacklist - index warnung ausblenden
+  if ($mybb->get_input('action') == "blacklist_hide_info_wouldbe") {
+
+    // Aktuelle User-ID holen
+    $uid = (int)$mybb->user['uid'];
+
+    if ($uid > 0) {
+      // Update der Spalte activitytracker_bl_view
+      $db->update_query("users", ["	activitytracker_bl_view_info" => 0], "uid='{$uid}'");
+    }
+    // Zurück zur Startseite
+    redirect("index.php", "Blacklist-Warnung wurde ausgeblendet.");
+  }
 }
 
 /**
@@ -1858,11 +1904,13 @@ function activitytracker_whitelist_show()
 $plugins->add_hook("index_start", "activitytracker_index");
 function activitytracker_index()
 {
-  global $mybb, $db, $templates, $blacklist_index, $lang, $activitytracker_bl_index_reminder_bit;
+  global $mybb, $db, $templates, $blacklist_index, $lang, $activitytracker_bl_index_reminder_bit, $blacklist_index_wouldbe;
 
   $lang->load('activitytracker');
-  //Reminder Blacklist - Blacklist ist aktiv dein Charakter würde drauf stehen.
-  if ($mybb->settings['activitytracker_bl_reminder_isonbl'] && $mybb->settings['activitytracker_bl_activ']) {
+  //Blacklist ist aktiv - info darüber und ob der user draufstehen würde. 
+  $blacklist_index = "";
+  //Reminder Blacklist - Blacklist ist aktiv dein Charakter steht drauf.
+  if ($mybb->settings['activitytracker_bl_reminder_isonbl'] && $mybb->settings['activitytracker_bl_activ'] && $mybb->settings['activitytracker_bl'] == 1) {
     $allchars = activitytracker_get_allchars_as($mybb->user['uid']);
     $characters = "";
     $cnt = 0;
@@ -1873,7 +1921,7 @@ function activitytracker_index()
         $blinfo = $db->fetch_array($checkbl);
 
         $activitytracker_bl_index_reminder_info = $lang->activitytracker_bl_index_reminder_info;
-        if ($blinfo['status'] != 'stroke' && $blinfo['away'] == 0) {
+        if ($blinfo['status'] != 'stroke' && ($blinfo['away'] == 0 || $blinfo['away'] == -1)) {
           $userinfo = get_user($uid);
           $characters .= $userinfo['username'] . ", ";
         }
@@ -1889,14 +1937,42 @@ function activitytracker_index()
     }
 
     eval("\$activitytracker_bl_index_reminder_bit =\"" . $templates->get("activitytracker_bl_index_reminder_is_bit") . "\";");
+
     if ($mybb->user['activitytracker_bl_view'] != 0) {
-      eval("\$blacklist_index =\"" . $templates->get("activitytracker_bl_index_reminder") . "\";");
+
+      eval("\$blacklist_index .=\"" . $templates->get("activitytracker_bl_index_reminder") . "\";");
     }
-    // eval("\$blacklist_index =\"" . $templates->get("activitytracker_bl_index_reminder") . "\";");
   }
-  //Reminder Whitelist
+  //Reminder Whitelists
 
   //szenenerinnerung
+  //Blacklist ist nicht aktiv - aber index meldung, wenn der Charakter auf der Liste stehen würde
+  if ($mybb->settings['activitytracker_bl_reminder'] == 1 && $mybb->settings['activitytracker_bl'] == 1) {
+    $wouldbe = false;
+    $thisuser = $mybb->user['uid'];
+    $uidarray = activitytracker_get_allchars_as($thisuser);
+    $activitytracker_bl_index_reminder_infowould = $lang->activitytracker_bl_index_reminder_info_wouldbe;
+
+    foreach ($uidarray as $uid) {
+      //für jeden Charakter des Users Testen ob er auf der Blacklist stehen würde
+      $blacklist_array = activitytracker_check_blacklist($uid);
+      echo "$uid<br>";
+      var_dump($blacklist_array);
+      if (!empty($blacklist_array)) {
+        $wouldbe = true;
+
+        $userinfo = get_user($uid);
+        $characters .= $userinfo['username'] . ", ";
+      }
+    }
+    $characters = substr($characters, 0, -2);
+    $blacklistwarning = "";
+
+    if ($wouldbe) {
+      eval("\$activitytracker_bl_index_reminder_bitwould .=\"" . $templates->get("activitytracker_bl_index_reminder_is_bit") . "\";");
+      eval("\$blacklist_index_wouldbe =\"" . $templates->get("activitytracker_bl_index_reminder_wouldbe") . "\";");
+    }
+  }
 }
 
 
@@ -2006,6 +2082,7 @@ function activitytracker_check_blacklist($uid, ?DateTime $checkdate = null)
   //blacklist array initalisieren
   $blacklistarray = array();
   //für welches datum soll getestet werden, wenn keins übergeben wird, immer heute
+
   $checkdate = $checkdate ?? new DateTime('now');
 
   //get settings 
@@ -2120,9 +2197,15 @@ function activitytracker_check_blacklist($uid, ?DateTime $checkdate = null)
             //reihenfolge ist egal
             //einfach letzten post holen aus dem Ingame und schauen ob er im zeitraum ist
             $ingame_lastpost = activitytracker_get_lastpost($uid, $ingame_fid);
+
             //checken ob er im Zeitraum ist
-            $isintime = activitytracker_post_in_timeperiod($ingame_lastpost['dateline'], $timeperiod, $checkdate);
-            //TODO ? Checken ob einer im archiv ist? 
+            if (!empty($ingame_lastpost)) {
+              $isintime = activitytracker_post_in_timeperiod($ingame_lastpost['dateline'], $timeperiod, $checkdate);
+            } else {
+              //es gibt gar keinen post des users
+              $isintime = false;
+            }
+
             //kein post gefunden der im Zeitraum ist
             if (!$isintime) {
               $blacklistarray[$uid]['reason'] = "tooldscenes";
@@ -2131,14 +2214,43 @@ function activitytracker_check_blacklist($uid, ?DateTime $checkdate = null)
           } else {
             //Postreihenfolge soll beachtet werden
             $allposts_ingame = array();
-            // erst einmal letzten posts des users aus dem Ingame in Zeitraum X (Blacklist settings) holen, 
+            //TODO macht das überhaupt einen Sinn, bei nur schauen ob es einen post im Zeitraum gibt? 
+            //well eher nicht. also wir schauen einfach, gibt es einen post im Zeitraum. Wenn ja fein. Wenn nein, dann auf die blacklist
+
+            // erst einmal letzten posts des users aus dem Ingame holen, 
             $ingame_lastpost = activitytracker_get_lastpost($uid, $ingame_fid);
-            $isintime = false;
+            //checken ob er im Zeitraum ist
             if (!empty($ingame_lastpost)) {
-              $isintime = activitytracker_check_hastopost($ingame_lastpost['tid'], $uid);
+              $isintime = activitytracker_post_in_timeperiod($ingame_lastpost['dateline'], $timeperiod, $checkdate);
             } else {
+              //es gibt gar keinen post des users
               $isintime = false;
             }
+
+            // //gibt es einen letzten post
+            // if (!empty($ingame_lastpost)) {
+            //   //dann prüfen wir, ob er dran wäre:
+            //   $hasto = activitytracker_check_hastopost($ingame_lastpost['tid'], $uid);
+            // } else {
+            //   //es gibt keinen post, gibt es denn eine Szene, wo er als teilnehemr eingetragen ist?
+            //   $scenearray = activitytracker_get_all_scenes_ingame($uid, $ingame_fid);
+            //   if (!empty($scenearray)) {
+            //     //es gibt eine Szene, wo er als Teilnehmer eingetragen ist
+            //     //jede szene durchgehen und schauen ob er dran ist.
+            //     foreach ($scenearray as $scene) {
+            //       $hasto = activitytracker_check_hastopost($scene['tid'], $uid);
+            //       if ($hasto) {
+            //         //er ist dran, also brauchen wir nicht weiter schauen
+            //         break;
+            //       }
+            //     }
+            //   } else {
+            //     //es gibt keine Szene, also landet er auf der Blacklist
+            //     $hasto = true;
+            //   }
+            // }
+
+
             // es gibt zwar posts, aber keiner in der frist
             if (!$isintime) {
               //also muss der Charakter auf die Blacklist
@@ -2468,6 +2580,7 @@ function activitytracker_get_lastpost($uid, $fidlist)
   $post = $db->fetch_array($post_query);
   return $post;
 }
+
 /** Prüfen ob eine uid zum User gehört
  * @param int uid
  * @return boolean
@@ -2722,11 +2835,98 @@ function activitytracker_get_days_diff($datetime, $checkdate = "today")
  */
 function activitytracker_blacklist_alert()
 {
-  //hole einstellung
-  //if (PN)
-  //Set UP PN HANDLER
-  //IF (MAIL)
-  //SEND MAIL
+  global $mybb, $db;
+  if ($mybb->usergroup['canmodcp'] == 1) {
+
+    if ($mybb->settings['activitytracker_bl_alert'] == 1) {
+      $activitytracker_excludeduid = $mybb->settings['activitytracker_excludeduid'];
+      if ($activitytracker_excludeduid == "") {
+        $activitytracker_excludeduid = 0;
+      }
+      $get_user = $db->simple_select("users", "uid", "as_uid = 0 AND uid not in ($activitytracker_excludeduid)", ["order_by" => "username", "order_dir" => "ASC"]);
+
+      //wenn setting = 1 dann gleicher Monat, wie gerade Also Blacklist 31. Juni -> dann Blacklist für Juni
+      if ($mybb->settings['activitytracker_bl_turnus_extrainfo_month'] == "1") {
+        $timestr = date('Y-m');
+      } else {
+        //wenn setting = 0 , dann immer der Vormmat (also Blacklist 31. August, dann für Juli)
+        $timestr = date('Y-m', strtotime('first day of last month'));
+      }
+
+      while ($hauptuser = $db->fetch_array($get_user)) {
+        $isonbl = 0;
+        $hauptuid = $hauptuser['uid'];
+
+        $uidarray = activitytracker_get_allchars_as($hauptuid);
+        $characters = "";
+        foreach ($uidarray as $uid) {
+          $blquery = $db->simple_select("at_blacklist", "*", "uid = '$uid' AND bldate like '{$timestr}%' and away != '1'");
+          if ($db->num_rows($blquery) > 0) {
+            //Chara ist auf der BL
+            $isonbl = 1;
+            $userinfo = get_user($uid);
+            $characters .= $userinfo['username'] . ", ";
+          }
+        }
+        //die letzten 2 Zeichen abschneiden (Komma und Leerzeichen)
+        $characters = substr($characters, 0, -2);
+
+        if ($isonbl) {
+          $userinfo_haupt = get_user($hauptuid);
+          //Mails verschicken
+          $forumname = $db->escape_string($mybb->settings['bbname']);
+          $username = $db->escape_string($userinfo_haupt['username']);
+          $subject =  $forumname . ": Blacklist";
+          $url = $mybb->settings['bburl'] . "misc.php?action=blacklist_at";
+
+          $message = "Hallo {$username}
+                Dies ist eine automatisch generierte Nachricht. Du bekommst sie, weil du von der aktuellen Blacklist betroffen bist.
+                Folgende Charaktere sind betroffen:
+                {$characters}
+                Da du diese Mail gerade liest, solltest du dich, sofern du noch Interesse daran hast Mitglied im {$forumname} zu sein, von der Blacklist streichen oder posten.
+                
+                Zur unserer aktuellen Blacklist kommst du hier: {$url}
+
+                Solltest du diese Mail bekommen, obwohl du nicht auf der Blacklist stehst, darfst du diese sehr gerne einfach ignorieren :)
+
+                Danke und liebe Grüße,
+                das Team des {$forumname}
+                {$mybb->settings['bburl']}";
+
+          if (trim($mybb->settings['activitytracker_bl_alerttype']) == 'mail') {
+            my_mail($userinfo_haupt['email'], $subject, $message, $mybb->settings['adminemail'], null, null, null, "text", null, null);
+          } else {
+            require_once MYBB_ROOT . "inc/datahandlers/pm.php";
+            $pmhandler = new PMDataHandler();
+            $pm = array(
+              "subject" => $subject,
+              "message" => $message,
+              "toid" => $hauptuid,
+              "fromid" => 1,
+              "icon" => "",
+              "do" => "",
+              "pmid" => "",
+
+            );
+            $pm['options'] = array(
+              'signature' => '0',
+              'savecopy' => '0',
+              'disablesmilies' => '0',
+              'readreceipt' => '0',
+            );
+            $pmhandler->set_data($pm);
+
+            if (!$pmhandler->validate_pm()) {
+              $pm_errors = $pmhandler->get_friendly_errors();
+              return $pm_errors;
+            } else {
+              $pmhandler->insert_pm();
+            }
+          }
+        }
+      }
+    }
+  }
 }
 
 /**
@@ -2823,13 +3023,11 @@ function activitytracker_get_teilnehmer_singlethread($tid, $uid)
 {
   global $mybb, $db;
   $trackertype = trim($mybb->settings['activitytracker_bl_tracker']);
-  // echo "activitytracker_get_teilnehmer_singlethread: tid: {$tid} - uid: {$uid} -trackertype '{$trackertype}' <br>";
   $teilnehmer = "";
   $teilnehmer_array = array();
   $threaddata = get_thread($tid);
   $userdata = get_user($uid);
   if ($trackertype == 'kein') {
-    // echo "<br>activitytracker_get_teilnehmer_singlethread: trackertype ist kein <br>";
     //dann nehmen wir die reihenfolge in der bisher gepostet wurde - so gut das geht
     $teilnehmer_query = $db->write_query("SELECT DISTINCT(username) FROM " . TABLE_PREFIX . "posts where tid = '{$tid}' ORDER BY pid DESC");
     while ($teilnehmer_data = $db->fetch_array($teilnehmer_query)) {
@@ -2873,9 +3071,6 @@ function activitytracker_get_teilnehmer_singlethread($tid, $uid)
       $teilnehmer_array = explode(",", trim($teilnehmer));
     }
   }
-  // echo "activitytracker_get_teilnehmer_singlethread: Risu Szenentracker - teilnehmer: <br>";
-  // var_dump($teilnehmer_array);
-  // echo "<br>";
   // wir stellen sicher, dass das Array nur existierende user enthält
   $teilnehmer_array = array_filter($teilnehmer_array, function ($username) {
     //callback funktion, testet ob es den usernamen gibt
@@ -3428,7 +3623,6 @@ $plugins->add_hook("misc_start", "activitytracker_test");
 function activitytracker_test()
 {
   global $mybb, $db;
-  // echo "hallo";
   if (!($mybb->get_input('action') == "activitytracker_test")) {
     return;
   }
