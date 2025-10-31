@@ -37,20 +37,20 @@ function task_at_blacklist($task)
     $ext_str =  "uid not in ({$excluded})";
   }
   $uid = "";
-  //test auf eisliste 
-  if ($mybb->settings['activitytracker_ice'] == 1) {
-    //Ist der Charakter gerade auf Eis gelegt
-    if ($db->num_rows(($db->simple_select("at_whitelist", "*", "uid = '{$uid}'")))) {
-      $ice = 1;
-    } else {
-      $ice = 0;
-    }
-  }
 
   $get_user_bl = $db->simple_select("users", "uid", "{$ext_str}");
   //alle user durchgehen
   // add_task_log($task, "Aktivitätsplugin: Task Blacklist ausgeführt.");
   while ($user = $db->fetch_array($get_user_bl)) {
+    //test auf eisliste 
+    if ($mybb->settings['activitytracker_ice'] == 1) {
+      //Ist der Charakter gerade auf Eis gelegt
+      if ($db->num_rows(($db->simple_select("at_icelist", "*", "uid = '{$uid}'")))) {
+        $ice = 1;
+      } else {
+        $ice = 0;
+      }
+    }
 
     $bl_entry = array();
     // TODO:
@@ -182,4 +182,9 @@ function task_at_blacklist($task)
   if (trim($mybb->settings['activitytracker_bl_alert']) == 'auto') {
     activitytracker_blacklist_alert();
   }
+  // //blacklist aktivieren.
+  // $db->update_query("settings", ["value" => 1], "name='activitytracker_bl_activ'");
+  // rebuild_settings();
+
+  add_task_log($task, "Blackliste Task des Aktivitätstracker wurde ausgeführt und Blacklist aktiviert.");
 }
