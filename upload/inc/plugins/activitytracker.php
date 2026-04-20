@@ -3200,7 +3200,7 @@ function activitytracker_get_teilnehmer_singlethread($tid)
     //sichergehen dass der tracker installiert ist
     if ($db->table_exists("ipt_scenes_partners")) {
       //Wir haben beim 3.0 keine gespeicherte reihenfolge, also gehen wir von der Reihenfolge aus, in der die Partner eingetragen wurden sind
-      $teilnehmer_query = $db->write_query("SELECT * FROM ipt_scenes_partners WHERE tid='{$tid}' ORDER BY spid ASC");
+      $teilnehmer_query = $db->write_query("SELECT * FROM ".TABLE_PREFIX."ipt_scenes_partners WHERE tid='{$tid}' ORDER BY spid ASC");
       while ($teilnehmer_data = $db->fetch_array($teilnehmer_query)) {
         $get_user = get_user($teilnehmer_data['uid']); // Holt den User anhand der UID
         if (!empty($get_user)) {
@@ -3316,7 +3316,7 @@ function activitytracker_check_is_teilnehmer($uid, $fid)
     } elseif ($trackertype == 'sparks3') {
       //sichergehen dass der tracker installiert ist
       if ($db->table_exists("ipt_scenes_partners")) {
-        if ($db->num_rows($teilnehmer_query = $db->write_query("SELECT * FROM ipt_scenes_partners WHERE uid='{$uid}")) > 0) {
+        if ($db->num_rows($teilnehmer_query = $db->write_query("SELECT * FROM ".TABLE_PREFIX."ipt_scenes_partners WHERE uid='{$uid}")) > 0) {
           return true;
         }
       }
