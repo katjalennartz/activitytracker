@@ -2650,7 +2650,7 @@ function activitytracker_check_teilnehmer_allthread($uid, $fid)
     //sichergehen dass der tracker installiert ist
     if (!$db->table_exists("ipt_scenes_partners")) {
       //Wir haben beim 3.0 keine gespeicherte reihenfolge, also gehen wir von der Reihenfolge aus, in der die Partner eingetragen wurden sind
-      $ipt3 = $db->write_query("SELECT * FROM ipt_scenes_partners WHERE uid='{$uid}'");
+      $ipt3 = $db->simple_select("ipt_scenes_partners", "*", "uid='{$uid}'");
       //gibt es überhaupt eine szene wo er eingetragen ist? 
       if ($db->num_rows($ipt3 > 0)) {
         //ist diese noch im ingame? 
